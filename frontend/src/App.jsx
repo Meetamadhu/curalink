@@ -114,7 +114,7 @@ export default function App() {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      <aside className="sidebar sidebar--top" aria-label="About Curalink">
         <div className="brand">
           <div className="brand__logo" aria-hidden />
           <div>
@@ -126,7 +126,31 @@ export default function App() {
         <p className="sidebar__intro">
           Structured context improves retrieval. Follow-up questions reuse your last disease focus automatically.
         </p>
+      </aside>
 
+      <header className="main__header">
+        <div className="main__header-intro">
+          <h1>Assistant</h1>
+          <p className="subtle main__header-intro__tagline">
+            OpenAlex + PubMed + ClinicalTrials.gov → rank →{" "}
+            <span className="accent">local open-source LLM</span> (Ollama). Not medical advice.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn--ghost btn--new-thread"
+          onClick={() => {
+            setConversationId(null);
+            setMessages([]);
+            setError("");
+          }}
+          disabled={loading}
+        >
+          New conversation
+        </button>
+      </header>
+
+      <aside className="sidebar sidebar--rest" aria-label="Research session controls">
         <div className="panel">
           <h3>Session context</h3>
           <label className="field">
@@ -262,28 +286,6 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <header className="main__header">
-          <div className="main__header-intro">
-            <h1>Assistant</h1>
-            <p className="subtle main__header-intro__tagline">
-              OpenAlex + PubMed + ClinicalTrials.gov → rank →{" "}
-              <span className="accent">local open-source LLM</span> (Ollama). Not medical advice.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn--ghost btn--new-thread"
-            onClick={() => {
-              setConversationId(null);
-              setMessages([]);
-              setError("");
-            }}
-            disabled={loading}
-          >
-            New conversation
-          </button>
-        </header>
-
         {error && <div className="banner banner--error">{error}</div>}
         {loading && (
           <div className="banner banner--info" role="status">

@@ -43,10 +43,37 @@ a:hover {
 .layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) 1fr;
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
   padding: 0.75rem;
   gap: 0.75rem;
   box-sizing: border-box;
+}
+
+.layout > .sidebar--top {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+}
+
+.layout > .main__header {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+}
+
+.layout > .sidebar--rest {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.layout > .main {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  align-self: stretch;
 }
 
 .sidebar {
@@ -75,6 +102,15 @@ a:hover {
   border-right: 3px solid var(--accent);
 }
 
+/* Session context + Quick prompts (not Retrieval stats) */
+.sidebar > .panel:not(.sidebar-stats) h3 {
+  color: #fde047;
+}
+
+.sidebar > .panel:not(.sidebar-stats) .field {
+  color: rgba(254, 240, 138, 0.95);
+}
+
 .brand {
   display: flex;
   gap: 0.75rem;
@@ -85,7 +121,7 @@ a:hover {
 .brand__logo {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: conic-gradient(from 210deg, var(--accent), var(--accent-2), #c084fc, var(--accent));
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
 }
@@ -179,7 +215,7 @@ a:hover {
 .sidebar-stats__warn {
   margin: 0.55rem 0 0;
   padding: 0.45rem 0.5rem;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 0.75rem;
   line-height: 1.4;
   color: #ffeccd;
@@ -214,7 +250,7 @@ a:hover {
 }
 
 .field input {
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: #0b1018;
   color: var(--text);
@@ -234,35 +270,29 @@ a:hover {
 }
 
 .btn {
-  border: 1px solid var(--border);
-  background: #151d2a;
-  color: var(--text);
-  border-radius: 10px;
+  border: 1px solid rgba(62, 207, 154, 0.55);
+  background: rgba(62, 207, 154, 0.08);
+  color: var(--accent);
+  border-radius: var(--radius);
   padding: 0.45rem 0.75rem;
   font: inherit;
   cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  background: rgba(62, 207, 154, 0.16);
+  border-color: rgba(62, 207, 154, 0.8);
+  color: #b8f5dc;
 }
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.btn--primary {
-  background: linear-gradient(135deg, #1f3b2f, #132a33);
-  border-color: rgba(62, 207, 154, 0.45);
-}
-.btn--ghost {
-  background: transparent;
-}
-
+.btn--primary,
+.btn--ghost,
 .btn--new-thread {
-  color: var(--accent);
   border-color: rgba(62, 207, 154, 0.55);
   background: rgba(62, 207, 154, 0.08);
-}
-.btn--new-thread:hover:not(:disabled) {
-  background: rgba(62, 207, 154, 0.16);
-  border-color: rgba(62, 207, 154, 0.8);
-  color: #b8f5dc;
+  color: var(--accent);
 }
 
 .chips {
@@ -273,23 +303,42 @@ a:hover {
 
 .chip {
   text-align: left;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #0b1018;
-  color: var(--text);
+  border-radius: var(--radius);
+  border: 1px solid rgba(62, 207, 154, 0.55);
+  background: rgba(62, 207, 154, 0.08);
+  color: var(--accent);
   padding: 0.55rem 0.65rem;
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
 }
 .chip:hover:not(:disabled) {
+  background: rgba(62, 207, 154, 0.16);
+  border-color: rgba(62, 207, 154, 0.8);
+  color: #b8f5dc;
+}
+
+/* Quick prompts only — dark chips + blue hover (original), not global green */
+.sidebar > .panel.panel--compact:not(.sidebar-stats) .chip {
+  border: 1px solid var(--border);
+  background: #0b1018;
+  color: var(--text);
+}
+
+.sidebar > .panel.panel--compact:not(.sidebar-stats) .chip:hover:not(:disabled) {
   border-color: rgba(90, 176, 255, 0.45);
+  background: #0b1018;
+  color: var(--text);
 }
 
 .main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(12, 17, 22, 0.35);
 }
 
 .main__header {
@@ -373,7 +422,7 @@ a:hover {
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--border-yellow);
   border-right: 3px solid var(--border-yellow);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: rgba(10, 14, 20, 0.55);
 }
 .bubble__content.markdown h2:first-child {
@@ -388,7 +437,7 @@ a:hover {
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--border-yellow);
   border-right: 3px solid var(--border-yellow);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: rgba(12, 17, 24, 0.5);
 }
 
@@ -400,7 +449,7 @@ a:hover {
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--border-yellow);
   border-right: 3px solid var(--border-yellow);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: rgba(10, 14, 20, 0.55);
 }
 
@@ -430,7 +479,7 @@ a:hover {
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--border-yellow);
   border-right: 3px solid var(--border-yellow);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 0.75rem 0.85rem;
   background: #0e141d;
 }
@@ -495,7 +544,7 @@ a:hover {
   resize: vertical;
   min-height: 52px;
   max-height: 160px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: #0b1018;
   color: var(--text);
@@ -529,7 +578,7 @@ a:hover {
 .banner {
   margin: 0.75rem 1.5rem 0;
   padding: 0.65rem 0.85rem;
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 0.9rem;
 }
 .banner--error {
@@ -550,12 +599,65 @@ a:hover {
 
 @media (max-width: 960px) {
   .layout {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 100vh;
   }
+
+  .layout > .sidebar--top,
+  .layout > .main__header,
+  .layout > .sidebar--rest,
+  .layout > .main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .layout > .main {
+    flex: 1;
+    min-height: 0;
+  }
+
   .sidebar {
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     border-left: 3px solid var(--border-yellow);
     border-right: 3px solid var(--border-yellow);
+  }
+
+  .main__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem 0.75rem 0.65rem;
+  }
+
+  .main__header > button {
+    order: 1;
+    width: 100%;
+    max-width: none;
+  }
+
+  .main__header-intro {
+    order: 2;
+    flex: none;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .thread {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .banner {
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+  }
+
+  .composer {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
