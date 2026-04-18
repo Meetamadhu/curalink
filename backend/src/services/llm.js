@@ -1,5 +1,16 @@
 const DEFAULT_OLLAMA = "http://127.0.0.1:11434";
 
+function ollamaBodyLooksLikeMemoryError(text) {
+  const s = String(text || "").toLowerCase();
+  return (
+    s.includes("system memory") ||
+    s.includes("more memory") ||
+    s.includes("insufficient vram") ||
+    s.includes("model requires") ||
+    (s.includes("gib") && s.includes("available"))
+  );
+}
+
 function safeJsonParse(text) {
   const raw = String(text || "").trim();
   const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -37,30 +48,45 @@ async function ollamaChat({
   if (preset === "expand") {
     options = { temperature, num_ctx: 2048, num_predict: 384 };
   } else if (fast) {
-    options = { temperature, num_ctx: 4096, num_predict: 768 };
+    options = { temperature, num_ctx: 2048, num_predict: 512 };
   } else {
     options = { temperature, num_ctx: 8192, num_predict: 1536 };
   }
-  try {
-    const res = await fetch(url, {
+  const messages = [
+    ...(system ? [{ role: "system", content: system }] : []),
+    { role: "user", content: user },
+  ];
+  const post = (opts) =>
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        stream: false,
-        options,
-        messages: [
-          ...(system ? [{ role: "system", content: system }] : []),
-          { role: "user", content: user },
-        ],
-      }),
+      body: JSON.stringify({ model, stream: false, options: opts, messages }),
     });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Ollama HTTP ${res.status}: ${t.slice(0, 240)}`);
+  try {
+    let res = await post(options);
+    let raw = await res.text();
+    if (
+      !res.ok &&
+      ollamaBodyLooksLikeMemoryError(raw) &&
+      (options.num_ctx > 1024 || options.num_predict > 256)
+    ) {
+      const low =
+        preset === "expand"
+          ? { temperature, num_ctx: 1024, num_predict: 192 }
+          : { temperature, num_ctx: 1024, num_predict: 256 };
+      res = await post(low);
+      raw = await res.text();
     }
-    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(`Ollama HTTP ${res.status}: ${raw.slice(0, 240)}`);
+    }
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(`Ollama returned non-JSON (${raw.slice(0, 120)}…)`);
+    }
     return data?.message?.content || "";
   } finally {
     clearTimeout(timer);

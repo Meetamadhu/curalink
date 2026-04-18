@@ -55,6 +55,21 @@ export default function App() {
 
   const hasContext = useMemo(() => Boolean(form.disease || form.location || form.patientName), [form]);
 
+  const lastRunStats = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (m.role === "assistant" && m.payload?.retrievalStats) {
+        return {
+          retrievalStats: m.payload.retrievalStats,
+          meta: m.meta,
+          sources: m.payload.sources,
+          errors: m.payload.errors,
+        };
+      }
+    }
+    return null;
+  }, [messages]);
+
   async function send(overrideText) {
     const text = (overrideText ?? input).trim();
     if (!text && !form.disease && !form.additionalQuery) {
@@ -183,6 +198,62 @@ export default function App() {
           </div>
         </div>
 
+        <div className="panel panel--compact sidebar-stats" aria-live="polite">
+          <h3>Retrieval stats</h3>
+          {loading && !lastRunStats && (
+            <p className="sidebar-stats__empty subtle">Waiting for the latest run…</p>
+          )}
+          {!loading && !lastRunStats && (
+            <p className="sidebar-stats__empty subtle">
+              Candidate counts from OpenAlex, PubMed, and ClinicalTrials.gov appear here after your first answer in this session.
+            </p>
+          )}
+          {loading && lastRunStats && <p className="sidebar-stats__hint subtle">Refreshing after your latest message…</p>}
+
+          {lastRunStats && (
+            <>
+              <ul className="sidebar-stats__list">
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">OpenAlex</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.openAlexCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">PubMed</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.pubmedCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Trials (CT.gov)</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.trialCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Merged publications</span>
+                  <span className="sidebar-stat__value mono">
+                    {lastRunStats.retrievalStats.mergedPublicationCandidates}
+                  </span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Ranked in answer</span>
+                  <span className="sidebar-stat__value mono">
+                    P{lastRunStats.sources?.publications?.length ?? 0} · T{lastRunStats.sources?.trials?.length ?? 0}
+                  </span>
+                </li>
+              </ul>
+              {lastRunStats.meta?.expandedQuery && (
+                <p className="sidebar-stats__expanded mono subtle">
+                  <span className="sidebar-stats__expanded-label">Expanded query</span>
+                  {lastRunStats.meta.expandedQuery}
+                </p>
+              )}
+              {lastRunStats.errors?.length > 0 && (
+                <p className="sidebar-stats__warn" role="status">
+                  Partial retrieval:{" "}
+                  {lastRunStats.errors.map((e) => `${e.source}: ${e.message}`).join(" · ")}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
         {conversationId && (
           <p className="mono subtle">
             Thread: <span className="select-all">{String(conversationId)}</span>
@@ -192,16 +263,16 @@ export default function App() {
 
       <main className="main">
         <header className="main__header">
-          <div>
+          <div className="main__header-intro">
             <h1>Assistant</h1>
-            <p className="subtle">
+            <p className="subtle main__header-intro__tagline">
               OpenAlex + PubMed + ClinicalTrials.gov → rank →{" "}
               <span className="accent">local open-source LLM</span> (Ollama). Not medical advice.
             </p>
           </div>
           <button
             type="button"
-            className="btn btn--ghost"
+            className="btn btn--ghost btn--new-thread"
             onClick={() => {
               setConversationId(null);
               setMessages([]);
@@ -209,7 +280,7 @@ export default function App() {
             }}
             disabled={loading}
           >
-            New thread
+            New conversation
           </button>
         </header>
 
