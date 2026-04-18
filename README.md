@@ -61,6 +61,21 @@ Open `http://localhost:5173`. Ensure MongoDB and Ollama are running.
 - **Database**: MongoDB Atlas recommended.
 - **Ollama in production**: Usually runs on a GPU-capable VM; point `OLLAMA_BASE_URL` at that internal URL and protect it with network policy / auth.
 
+### Deploy the frontend on Vercel
+
+Vercel is best for the **React (Vite) static build**. The **Express API** should run on a Node-capable host (e.g. Render/Railway) because chat requests are **long-lived** and need **MongoDB + Ollama** next to the API.
+
+1. Deploy the **backend** first; note its public origin, e.g. `https://curalink-api.onrender.com` (no trailing slash).
+2. In [Vercel](https://vercel.com): **Add New Project** → import **`Meetamadhu/curalink`** (or your fork).
+3. **Root Directory**: set to **`frontend`** (Project Settings → General if you need to change it later).
+4. **Environment Variables** (Production — required **before** the first successful build):
+   - **`VITE_API_BASE`** = your API origin, e.g. `https://curalink-api.onrender.com`  
+     Vite bakes this in at **build** time. If you change it, trigger a **Redeploy**.
+5. **Build**: default `npm run build`, **Output**: `dist` (Vercel auto-detects Vite when root is `frontend`).
+6. **CORS**: this repo’s API uses `cors({ origin: true })`, which reflects the browser origin so the Vercel URL can call the API.
+
+`frontend/vercel.json` adds a SPA-style rewrite so hard-refreshes keep serving `index.html`.
+
 ## API
 
 - `POST /api/chat` — body: `{ "conversationId"?: string, "message": string, "structured"?: { patientName?, disease?, additionalQuery?, location? } }`
