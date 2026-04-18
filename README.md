@@ -76,6 +76,24 @@ Vercel is best for the **React (Vite) static build**. The **Express API** should
 
 `frontend/vercel.json` adds a SPA-style rewrite so hard-refreshes keep serving `index.html`.
 
+### Deploy the API on Render
+
+1. Push this repo to GitHub (already done if you use the same remote).
+2. In [Render](https://dashboard.render.com): **New** → **Blueprint** → connect the repo and select **`render.yaml`**, **or** **New Web Service** with:
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Health Check Path**: `/api/health`
+3. **Environment** (Service → Environment), set at least:
+   - **`MONGODB_URI`** — use [MongoDB Atlas](https://www.mongodb.com/atlas); Render’s free tier cannot run MongoDB beside this app reliably.
+   - **`OLLAMA_BASE_URL`** — must be a URL your Render service can reach (e.g. a small VM or tunnel running Ollama). Render cannot run Ollama inside this Node web process.
+   - **`OLLAMA_MODEL`** — e.g. `llama3.2`
+   - **`PUBMED_EMAIL`** — your real email (NCBI).
+   - Optional: **`CURALINK_FAST_MODE`**, **`FRONTEND_DIST`** (only if you copy a built `dist` into the image; usually you host the UI on Vercel instead).
+4. After deploy, copy the service URL (e.g. `https://curalink-api.onrender.com`) into **`VITE_API_BASE`** on Vercel and redeploy the frontend.
+
+The repo root **`render.yaml`** defines a sample **Web Service** with `rootDir: backend` so you can use a Blueprint in one click; set the `sync: false` secrets in the dashboard after the service exists.
+
 ## API
 
 - `POST /api/chat` — body: `{ "conversationId"?: string, "message": string, "structured"?: { patientName?, disease?, additionalQuery?, location? } }`

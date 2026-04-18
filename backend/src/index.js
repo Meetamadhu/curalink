@@ -39,8 +39,8 @@ async function main() {
     }
   }
 
-  app.listen(PORT, () => {
-    console.log(`Curalink API listening on :${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Curalink API listening on 0.0.0.0:${PORT}`);
   });
 }
 

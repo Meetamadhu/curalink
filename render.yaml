@@ -1,0 +1,28 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# After first deploy, set secret env vars in the Render dashboard (Mongo URI, Ollama URL, etc.).
+
+services:
+  - type: web
+    name: curalink-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.1"
+      - key: CURALINK_FAST_MODE
+        value: "1"
+      - key: MONGODB_URI
+        sync: false
+      - key: OLLAMA_BASE_URL
+        sync: false
+      - key: OLLAMA_MODEL
+        sync: false
+      - key: PUBMED_EMAIL
+        sync: false
+      - key: PUBMED_TOOL
+        value: curalink_research
