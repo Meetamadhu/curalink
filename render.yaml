@@ -1,5 +1,5 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# After first deploy, set secret env vars in the Render dashboard (Mongo URI, Ollama URL, etc.).
+# Deploy API first, set its URL in VITE_API_BASE for the static site, then redeploy the frontend if needed.
 
 services:
   - type: web
@@ -26,3 +26,21 @@ services:
         sync: false
       - key: PUBMED_TOOL
         value: curalink_research
+
+  # Frontend (Vite) — free static site on *.onrender.com
+  - type: web
+    name: curalink-web
+    runtime: static
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    # Path is relative to the repository root (not rootDir)
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

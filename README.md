@@ -76,6 +76,23 @@ Vercel is best for the **React (Vite) static build**. The **Express API** should
 
 `frontend/vercel.json` adds a SPA-style rewrite so hard-refreshes keep serving `index.html`.
 
+### Deploy the frontend on Render (Static Site)
+
+You get a URL like **`https://curalink-web.onrender.com`** (name + random suffix if the name is taken).
+
+**Option A — same Blueprint as the API**  
+The root **`render.yaml`** includes a second service **`curalink-web`** (`runtime: static`, `rootDir: frontend`, publish **`./frontend/dist`**). When Render prompts for **`VITE_API_BASE`**, set it to your **API** URL (e.g. `https://curalink-api.onrender.com`, no trailing slash), then finish the deploy. If the API URL did not exist on the first build, set **`VITE_API_BASE`** in the static service’s **Environment** and click **Manual Deploy → Clear build cache & deploy**.
+
+**Option B — Static Site only (manual)**  
+1. **New** → **Static Site** → your repo.  
+2. **Root Directory:** `frontend`  
+3. **Build Command:** `npm install && npm run build`  
+4. **Publish directory:** `dist` (relative to `frontend`, i.e. the folder Vite emits).  
+5. Add **`VITE_API_BASE`** = your Render API URL (same as above).  
+6. Optional: **Redirects / Rewrites** → rewrite `/*` → `/index.html` for SPA deep links (the Blueprint already adds a `routes` rewrite).
+
+The browser will call **`VITE_API_BASE`** for `/api/chat`; ensure the API **CORS** allows your static `*.onrender.com` origin (this repo uses `cors({ origin: true })`).
+
 ### Deploy the API on Render
 
 1. Push this repo to GitHub (already done if you use the same remote).
@@ -92,7 +109,7 @@ Vercel is best for the **React (Vite) static build**. The **Express API** should
    - Optional: **`CURALINK_FAST_MODE`**, **`FRONTEND_DIST`** (only if you copy a built `dist` into the image; usually you host the UI on Vercel instead).
 4. After deploy, copy the service URL (e.g. `https://curalink-api.onrender.com`) into **`VITE_API_BASE`** on Vercel and redeploy the frontend.
 
-The repo root **`render.yaml`** defines a sample **Web Service** with `rootDir: backend` so you can use a Blueprint in one click; set the `sync: false` secrets in the dashboard after the service exists.
+The repo root **`render.yaml`** defines **two** services: **`curalink-api`** (Node) and **`curalink-web`** (static Vite build). Set all `sync: false` values in the dashboard when the Blueprint is applied.
 
 ## API
 
