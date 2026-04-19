@@ -131,7 +131,7 @@ export default function App() {
         </div>
       </aside>
 
-      <aside className="sidebar layout__sidebar-panels" aria-label="Session context and quick prompts">
+      <aside className="sidebar layout__sidebar-session" aria-label="Session context">
         <div className="panel" id="session-context">
           <h3>Session context</h3>
           <label className="field">
@@ -186,7 +186,9 @@ export default function App() {
             </button>
           </div>
         </div>
+      </aside>
 
+      <aside className="sidebar layout__sidebar-quick" aria-label="Quick prompts">
         <div className="panel panel--compact" id="quick-prompts">
           <h3>Quick prompts</h3>
           <div className="chips">

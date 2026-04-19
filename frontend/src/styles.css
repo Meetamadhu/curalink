@@ -198,7 +198,8 @@ a:hover {
   background: var(--surface-overlay-35);
 }
 
-.layout__sidebar-lower > .layout__sidebar-panels {
+.layout__sidebar-lower > .layout__sidebar-session,
+.layout__sidebar-lower > .layout__sidebar-quick {
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -843,17 +844,18 @@ a:hover {
 }
 
 @media (max-width: 960px) {
-  /* Explicit stack: logo → Assistant → thread/empty → composer → session → stats */
+  /* logo → Assistant → main → session → quick prompts → Ask a follow-up → stats */
   .layout {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
       "brand"
       "header"
       "main"
+      "session"
+      "quick"
       "composer"
-      "panels"
       "stats";
     gap: 0.75rem;
     min-height: 100vh;
@@ -882,8 +884,12 @@ a:hover {
     grid-area: composer;
   }
 
-  .layout > .layout__sidebar-panels {
-    grid-area: panels;
+  .layout > .layout__sidebar-session {
+    grid-area: session;
+  }
+
+  .layout > .layout__sidebar-quick {
+    grid-area: quick;
   }
 
   .layout > .layout__sidebar-stats {
@@ -893,14 +899,16 @@ a:hover {
   .layout > .sidebar--top,
   .layout > .main__header,
   .layout > .main,
-  .layout > .layout__sidebar-panels,
+  .layout > .layout__sidebar-session,
+  .layout > .layout__sidebar-quick,
   .layout > .composer,
   .layout > .layout__sidebar-stats {
     width: 100%;
     min-width: 0;
   }
 
-  .layout > .layout__sidebar-panels,
+  .layout > .layout__sidebar-session,
+  .layout > .layout__sidebar-quick,
   .layout > .layout__sidebar-stats,
   .layout > .composer {
     flex-shrink: 0;
