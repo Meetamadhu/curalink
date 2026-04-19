@@ -122,19 +122,14 @@ export default function App() {
             <div className="brand__tag">Research + reasoning</div>
           </div>
         </div>
-
-        <p className="sidebar__intro">
-          Structured context improves retrieval. Follow-up questions reuse your last disease focus automatically.
-        </p>
       </aside>
 
       <header className="main__header">
         <div className="main__header-intro">
-          <h1>Assistant</h1>
-          <p className="subtle main__header-intro__tagline">
-            OpenAlex + PubMed + ClinicalTrials.gov → rank →{" "}
-            <span className="accent">local open-source LLM</span> (Ollama). Not medical advice.
-          </p>
+          <div className="main__header-title-row">
+            <h1>Assistant</h1>
+            <p className="main__header-welcome">Welcome — I am your AI assistant.</p>
+          </div>
         </div>
         <button
           type="button"
@@ -150,141 +145,6 @@ export default function App() {
         </button>
       </header>
 
-      <aside className="sidebar sidebar--rest" aria-label="Research session controls">
-        <div className="panel">
-          <h3>Session context</h3>
-          <label className="field">
-            <span>Patient name (optional)</span>
-            <input
-              value={form.patientName}
-              onChange={(e) => setForm({ ...form, patientName: e.target.value })}
-              placeholder="e.g. John Smith"
-            />
-          </label>
-          <label className="field">
-            <span>Disease / condition</span>
-            <input
-              value={form.disease}
-              onChange={(e) => setForm({ ...form, disease: e.target.value })}
-              placeholder="e.g. Parkinson disease"
-            />
-          </label>
-          <label className="field">
-            <span>Research focus / intent</span>
-            <input
-              value={form.additionalQuery}
-              onChange={(e) => setForm({ ...form, additionalQuery: e.target.value })}
-              placeholder="e.g. Deep brain stimulation"
-            />
-          </label>
-          <label className="field">
-            <span>Location (trials)</span>
-            <input
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="e.g. Toronto, Canada"
-            />
-          </label>
-          <div className="panel__actions">
-            <button type="button" className="btn btn--ghost" onClick={() => setForm(initialForm)} disabled={loading}>
-              Clear fields
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                const combined = [form.disease, form.additionalQuery]
-                  .map((s) => String(s || "").trim())
-                  .filter(Boolean)
-                  .join(" · ");
-                send(combined || input.trim() || undefined);
-              }}
-              disabled={loading}
-            >
-              Run with context
-            </button>
-          </div>
-        </div>
-
-        <div className="panel panel--compact">
-          <h3>Quick prompts</h3>
-          <div className="chips">
-            {[
-              "Latest treatment for lung cancer",
-              "Clinical trials for diabetes",
-              "Top researchers in Alzheimer disease",
-              "Recent studies on heart disease",
-            ].map((q) => (
-              <button key={q} type="button" className="chip" onClick={() => send(q)} disabled={loading}>
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel panel--compact sidebar-stats" aria-live="polite">
-          <h3>Retrieval stats</h3>
-          {loading && !lastRunStats && (
-            <p className="sidebar-stats__empty subtle">Waiting for the latest run…</p>
-          )}
-          {!loading && !lastRunStats && (
-            <p className="sidebar-stats__empty subtle">
-              Candidate counts from OpenAlex, PubMed, and ClinicalTrials.gov appear here after your first answer in this session.
-            </p>
-          )}
-          {loading && lastRunStats && <p className="sidebar-stats__hint subtle">Refreshing after your latest message…</p>}
-
-          {lastRunStats && (
-            <>
-              <ul className="sidebar-stats__list">
-                <li className="sidebar-stat">
-                  <span className="sidebar-stat__label">OpenAlex</span>
-                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.openAlexCandidates}</span>
-                </li>
-                <li className="sidebar-stat">
-                  <span className="sidebar-stat__label">PubMed</span>
-                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.pubmedCandidates}</span>
-                </li>
-                <li className="sidebar-stat">
-                  <span className="sidebar-stat__label">Trials (CT.gov)</span>
-                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.trialCandidates}</span>
-                </li>
-                <li className="sidebar-stat">
-                  <span className="sidebar-stat__label">Merged publications</span>
-                  <span className="sidebar-stat__value mono">
-                    {lastRunStats.retrievalStats.mergedPublicationCandidates}
-                  </span>
-                </li>
-                <li className="sidebar-stat">
-                  <span className="sidebar-stat__label">Ranked in answer</span>
-                  <span className="sidebar-stat__value mono">
-                    P{lastRunStats.sources?.publications?.length ?? 0} · T{lastRunStats.sources?.trials?.length ?? 0}
-                  </span>
-                </li>
-              </ul>
-              {lastRunStats.meta?.expandedQuery && (
-                <p className="sidebar-stats__expanded mono subtle">
-                  <span className="sidebar-stats__expanded-label">Expanded query</span>
-                  {lastRunStats.meta.expandedQuery}
-                </p>
-              )}
-              {lastRunStats.errors?.length > 0 && (
-                <p className="sidebar-stats__warn" role="status">
-                  Partial retrieval:{" "}
-                  {lastRunStats.errors.map((e) => `${e.source}: ${e.message}`).join(" · ")}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        {conversationId && (
-          <p className="mono subtle">
-            Thread: <span className="select-all">{String(conversationId)}</span>
-          </p>
-        )}
-      </aside>
-
       <main className="main">
         {error && <div className="banner banner--error">{error}</div>}
         {loading && (
@@ -297,8 +157,30 @@ export default function App() {
         <section className="thread" aria-live="polite">
           {messages.length === 0 && (
             <div className="empty">
-              <h2>Start a research conversation</h2>
-              <p>
+              <h2 className="empty__title">Start a research conversation</h2>
+              <p className="empty__context subtle">
+                <a
+                  href="#session-context"
+                  className="empty__context-link"
+                  title="Jump to Session context in the sidebar"
+                >
+                  Structured context
+                </a>{" "}
+                improves retrieval. Follow-up questions reuse your last disease focus automatically. Use{" "}
+                <a
+                  href="#quick-prompts"
+                  className="empty__context-link"
+                  title="Jump to Quick prompts in the sidebar"
+                >
+                  Quick prompts
+                </a>{" "}
+                for one-tap example questions. Type your own message in the{" "}
+                <a href="#query-field" className="empty__context-link" title="Jump to the query text box">
+                  query field
+                </a>
+                .
+              </p>
+              <p className="empty__body">
                 Ask in natural language, optionally set disease and location on the left. The backend pulls a{" "}
                 <strong>broad candidate pool</strong> (hundreds of items), then <strong>ranks</strong> to the top few
                 with transparent sources.
@@ -354,29 +236,166 @@ export default function App() {
             </div>
           ))}
         </section>
+      </main>
 
-        <footer className="composer">
-          {hasContext && <span className="composer__hint subtle">Using sidebar context for this thread.</span>}
-          <div className="composer__row">
-            <textarea
-              rows={2}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a follow-up… (prior disease context is kept on the server)"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
+      <aside className="sidebar layout__sidebar-panels" aria-label="Session context and quick prompts">
+        <div className="panel" id="session-context">
+          <h3>Session context</h3>
+          <label className="field">
+            <span>Patient name (optional)</span>
+            <input
+              value={form.patientName}
+              onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+              placeholder="e.g. John Smith"
+            />
+          </label>
+          <label className="field">
+            <span>Disease / condition</span>
+            <input
+              value={form.disease}
+              onChange={(e) => setForm({ ...form, disease: e.target.value })}
+              placeholder="e.g. Parkinson disease"
+            />
+          </label>
+          <label className="field">
+            <span>Research focus / intent</span>
+            <input
+              value={form.additionalQuery}
+              onChange={(e) => setForm({ ...form, additionalQuery: e.target.value })}
+              placeholder="e.g. Deep brain stimulation"
+            />
+          </label>
+          <label className="field">
+            <span>Location (trials)</span>
+            <input
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+              placeholder="e.g. Toronto, Canada"
+            />
+          </label>
+          <div className="panel__actions">
+            <button type="button" className="btn btn--ghost" onClick={() => setForm(initialForm)} disabled={loading}>
+              Clear fields
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                const combined = [form.disease, form.additionalQuery]
+                  .map((s) => String(s || "").trim())
+                  .filter(Boolean)
+                  .join(" · ");
+                send(combined || input.trim() || undefined);
               }}
               disabled={loading}
-            />
-            <button type="button" className="btn btn--primary" onClick={() => send()} disabled={loading}>
-              {loading ? "…" : "Send"}
+            >
+              Run with context
             </button>
           </div>
-        </footer>
-      </main>
+        </div>
+
+        <div className="panel panel--compact" id="quick-prompts">
+          <h3>Quick prompts</h3>
+          <div className="chips">
+            {[
+              "Latest treatment for lung cancer",
+              "Clinical trials for diabetes",
+              "Top researchers in Alzheimer disease",
+              "Recent studies on heart disease",
+            ].map((q) => (
+              <button key={q} type="button" className="chip" onClick={() => send(q)} disabled={loading}>
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <footer className="composer">
+        {hasContext && <span className="composer__hint subtle">Using sidebar context for this thread.</span>}
+        <div className="composer__row">
+          <textarea
+            id="query-field"
+            rows={2}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a follow-up… (prior disease context is kept on the server)"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            disabled={loading}
+          />
+          <button type="button" className="btn btn--primary" onClick={() => send()} disabled={loading}>
+            {loading ? "…" : "Send"}
+          </button>
+        </div>
+      </footer>
+
+      <aside className="sidebar layout__sidebar-stats" aria-label="Retrieval stats" aria-live="polite">
+        <div className="panel panel--compact sidebar-stats">
+          <h3>Retrieval stats</h3>
+          {loading && !lastRunStats && <p className="sidebar-stats__empty subtle">Waiting for the latest run…</p>}
+          {!loading && !lastRunStats && (
+            <p className="sidebar-stats__empty subtle">
+              Candidate counts from OpenAlex, PubMed, and ClinicalTrials.gov appear here after your first answer in
+              this session.
+            </p>
+          )}
+          {loading && lastRunStats && <p className="sidebar-stats__hint subtle">Refreshing after your latest message…</p>}
+
+          {lastRunStats && (
+            <>
+              <ul className="sidebar-stats__list">
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">OpenAlex</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.openAlexCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">PubMed</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.pubmedCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Trials (CT.gov)</span>
+                  <span className="sidebar-stat__value mono">{lastRunStats.retrievalStats.trialCandidates}</span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Merged publications</span>
+                  <span className="sidebar-stat__value mono">
+                    {lastRunStats.retrievalStats.mergedPublicationCandidates}
+                  </span>
+                </li>
+                <li className="sidebar-stat">
+                  <span className="sidebar-stat__label">Ranked in answer</span>
+                  <span className="sidebar-stat__value mono">
+                    P{lastRunStats.sources?.publications?.length ?? 0} · T{lastRunStats.sources?.trials?.length ?? 0}
+                  </span>
+                </li>
+              </ul>
+              {lastRunStats.meta?.expandedQuery && (
+                <p className="sidebar-stats__expanded mono subtle">
+                  <span className="sidebar-stats__expanded-label">Expanded query</span>
+                  {lastRunStats.meta.expandedQuery}
+                </p>
+              )}
+              {lastRunStats.errors?.length > 0 && (
+                <p className="sidebar-stats__warn" role="status">
+                  Partial retrieval:{" "}
+                  {lastRunStats.errors.map((e) => `${e.source}: ${e.message}`).join(" · ")}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {conversationId && (
+          <p className="mono subtle layout__thread-id">
+            Thread: <span className="select-all">{String(conversationId)}</span>
+          </p>
+        )}
+      </aside>
     </div>
   );
 }
