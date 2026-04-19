@@ -155,15 +155,19 @@ a:hover {
   display: grid;
   grid-template-columns: minmax(280px, 360px) 1fr;
   grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "sidecol header"
+    "sidecol main"
+    "sidecol composer";
   min-height: 100vh;
   padding: 0.75rem;
   gap: 0.75rem;
   box-sizing: border-box;
 }
 
-.layout > .layout__sidebar-column {
-  grid-column: 1;
-  grid-row: 1 / -1;
+/* Left column: Curalink + session + stats (sticky rail); on mobile see @media */
+.layout > .layout__sidebar-lower {
+  grid-area: sidecol;
   align-self: start;
   position: sticky;
   top: 0.75rem;
@@ -171,6 +175,7 @@ a:hover {
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  min-height: 0;
   border-radius: var(--radius);
   border: none;
   border-left: 2px solid var(--border-orangellow-light);
@@ -180,14 +185,12 @@ a:hover {
 }
 
 .layout > .main__header {
-  grid-column: 2;
-  grid-row: 1;
+  grid-area: header;
   align-self: start;
 }
 
 .layout > .main {
-  grid-column: 2;
-  grid-row: 2;
+  grid-area: main;
   min-height: 0;
   align-self: stretch;
   border: none;
@@ -195,7 +198,7 @@ a:hover {
   background: var(--surface-overlay-35);
 }
 
-.layout__sidebar-column > .layout__sidebar-panels {
+.layout__sidebar-lower > .layout__sidebar-panels {
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -206,8 +209,7 @@ a:hover {
 }
 
 .layout > .composer {
-  grid-column: 2;
-  grid-row: 3;
+  grid-area: composer;
   align-self: stretch;
   border: none;
   border-radius: var(--radius);
@@ -858,7 +860,8 @@ a:hover {
     min-height: 100dvh;
   }
 
-  .layout > .layout__sidebar-column {
+  /* Flatten sidebar stack so grid areas control order without fragile DOM */
+  .layout > .layout__sidebar-lower {
     display: contents;
   }
 

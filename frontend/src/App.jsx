@@ -120,7 +120,7 @@ export default function App() {
 
   return (
     <div className="layout">
-      <div className="layout__sidebar-column">
+      <div className="layout__sidebar-lower">
       <aside className="sidebar sidebar--top" aria-label="About Curalink">
         <div className="brand">
           <div className="brand__logo" aria-hidden />
