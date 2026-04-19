@@ -22,7 +22,8 @@
   --surface-bubble-user: rgba(25, 42, 58, 0.9);
   --surface-markdown-block: rgba(10, 14, 20, 0.55);
   --surface-markdown-p: rgba(12, 17, 24, 0.5);
-  --surface-sources: rgba(8, 12, 18, 0.4);
+  /* Publication / trial sources block — solid panel (no translucent blend) */
+  --surface-sources: #151d2a;
   --surface-brand-a: rgba(18, 25, 34, 0.92);
   --surface-brand-b: rgba(10, 14, 20, 0.88);
   --surface-sidebar-a: rgba(24, 34, 48, 0.98);
@@ -49,6 +50,8 @@
   --highlight: #fde047;
   --highlight-field: rgba(254, 240, 138, 0.95);
   --brand-title: #fef3c7;
+  /* Curalink wordmark: dark yellow / gold on brand card */
+  --brand-curalink-name: #a16207;
   --brand-tag: #93c5fd;
   --welcome: #fde68a;
   --link-hover: #9dcef8;
@@ -99,20 +102,32 @@
   --error-glow-10: rgba(239, 68, 68, 0.1);
 
   /* Neutrals */
-  --shadow-drop: rgba(0, 0, 0, 0.35);
-  --shadow-drop-strong: rgba(0, 0, 0, 0.45);
   --ring-soft: rgba(255, 255, 255, 0.1);
   --link-underline: rgba(90, 176, 255, 0.45);
   --link-underline-hover: rgba(157, 206, 248, 0.75);
   --pill-warn-border: rgba(240, 193, 75, 0.35);
+  /* Assistant header: orange + yellow rail */
+  --border-orangellow: #fbbf24;
+  --border-orangellow-light: #fde68a;
+  --effect-orangellow-inset-rails:
+    inset 0 10px 22px -10px rgba(253, 230, 138, 0.28), inset 0 -10px 22px -10px rgba(253, 230, 138, 0.28);
+  /* Session context + Quick prompts aside */
+  --shadow-session-panels:
+    0 8px 28px rgba(0, 0, 0, 0.4), 0 0 32px rgba(253, 230, 138, 0.16), 0 2px 10px rgba(0, 0, 0, 0.22);
+  /* Session context, Quick prompts, Retrieval stats */
+  --glow-sidebar-form-panels:
+    0 0 28px rgba(253, 230, 138, 0.3), 0 0 44px rgba(90, 176, 255, 0.2), 0 6px 26px rgba(0, 0, 0, 0.38);
+  /* Empty thread — “Start a research conversation” */
+  --glow-empty-red:
+    0 0 28px rgba(248, 113, 113, 0.45), 0 0 52px rgba(239, 68, 68, 0.22), 0 8px 28px rgba(0, 0, 0, 0.4);
+  /* Publication / trial source cards — warm yellow rail glow */
+  --glow-source-card:
+    0 0 20px rgba(253, 230, 138, 0.28), 0 0 38px rgba(250, 204, 21, 0.14), 0 0 52px rgba(234, 179, 8, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.35);
 
   --radius: 14px;
   --font: "DM Sans", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
-
-  --shadow-yellow-border: 0 0 0 1px var(--amber-a-18), 0 4px 26px var(--amber-line-22),
-    0 0 40px var(--amber-glow-08);
-  --shadow-red-border: 0 0 0 1px var(--error-a-22), 0 4px 26px var(--error-a-24), 0 0 42px var(--error-glow-10);
 }
 
 * {
@@ -124,13 +139,8 @@ body {
   font-family: var(--font);
   color: var(--text);
   min-height: 100vh;
-  background-color: var(--bg-deep);
-  background-image:
-    radial-gradient(ellipse 1000px 520px at 12% -5%, var(--accent-2-a-22) 0%, transparent 55%),
-    radial-gradient(ellipse 880px 560px at 92% 102%, var(--accent-a-12) 0%, transparent 52%),
-    radial-gradient(ellipse 1400px 700px at 50% 45%, var(--surface-blue-deep) 0%, transparent 60%),
-    linear-gradient(168deg, var(--bg-step-up) 0%, var(--bg) 38%, var(--bg-step-mid) 72%, var(--bg-step-down) 100%);
-  background-attachment: fixed;
+  background-color: var(--bg);
+  background-image: none;
 }
 
 a {
@@ -161,6 +171,12 @@ a:hover {
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  border-radius: var(--radius);
+  border: none;
+  border-left: 2px solid var(--border-orangellow-light);
+  border-right: 2px solid var(--border-orangellow-light);
+  overflow: hidden;
+  box-shadow: var(--effect-orangellow-inset-rails);
 }
 
 .layout > .main__header {
@@ -174,8 +190,7 @@ a:hover {
   grid-row: 2;
   min-height: 0;
   align-self: stretch;
-  border: 1px solid var(--border);
-  border-bottom: none;
+  border: none;
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--surface-overlay-35);
 }
@@ -186,33 +201,22 @@ a:hover {
   flex-direction: column;
   gap: 0.75rem;
   background-color: var(--panel);
-  background-image:
-    radial-gradient(ellipse 140% 95% at 0% 0%, var(--amber-a-16) 0%, transparent 52%),
-    radial-gradient(ellipse 110% 90% at 100% 8%, var(--accent-2-a-14) 0%, transparent 50%),
-    radial-gradient(ellipse 120% 70% at 50% 100%, var(--accent-a-10) 0%, transparent 48%),
-    linear-gradient(168deg, var(--surface-sidebar-a) 0%, var(--surface-sidebar-b) 45%, var(--surface-sidebar-c) 100%);
+  background-image: none;
+  box-shadow: var(--shadow-session-panels);
 }
 
 .layout > .composer {
   grid-column: 2;
   grid-row: 3;
   align-self: stretch;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface-composer);
   overflow: hidden;
 }
 
-.layout__thread-id {
-  margin: 0.75rem 0 0;
-  padding: 0 0.15rem;
-}
-
 .sidebar {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
   border-radius: var(--radius);
   padding: 1.25rem 1.25rem 2rem;
   background: var(--panel);
@@ -221,17 +225,12 @@ a:hover {
 .sidebar .panel {
   background: var(--surface-frost);
   backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
 }
 
 .sidebar .panel.sidebar-stats {
-  border-top: 1px solid var(--accent-a-50);
-  border-bottom: 1px solid var(--accent-a-50);
-  border-left: 3px solid var(--accent);
-  border-right: 3px solid var(--accent);
+  border: 1px solid var(--border);
+  box-shadow: var(--glow-sidebar-form-panels);
 }
 
 /* Session context + Quick prompts (not Retrieval stats) */
@@ -250,13 +249,14 @@ a:hover {
   margin-bottom: 1rem;
   padding: 0.9rem 1rem;
   border-radius: var(--radius);
-  border: 1px solid var(--amber-border-22);
-  background:
-    radial-gradient(ellipse 130% 100% at 0% 20%, var(--accent-2-a-14) 0%, transparent 52%),
-    radial-gradient(ellipse 100% 120% at 100% 80%, var(--accent-a-10) 0%, transparent 48%),
-    linear-gradient(165deg, var(--surface-brand-a) 0%, var(--surface-brand-b) 100%);
-  box-shadow: 0 0 0 1px var(--amber-a-10), 0 6px 24px var(--shadow-drop);
+  border: none;
+  border-left: 2px solid var(--border-orangellow-light);
+  border-right: 2px solid var(--border-orangellow-light);
+  background-color: var(--panel);
+  background-image: none;
   backdrop-filter: blur(12px);
+  overflow: hidden;
+  box-shadow: var(--effect-orangellow-inset-rails);
 }
 
 .brand__logo {
@@ -264,11 +264,8 @@ a:hover {
   height: 46px;
   flex-shrink: 0;
   border-radius: 12px;
-  background: conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--tertiary), var(--accent));
-  box-shadow:
-    0 0 0 2px var(--ring-soft),
-    0 0 22px var(--accent-2-a-28),
-    0 4px 14px var(--shadow-drop-strong);
+  background-color: var(--accent-2);
+  background-image: none;
 }
 
 .brand__name {
@@ -276,7 +273,7 @@ a:hover {
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.2;
-  color: var(--brand-title);
+  color: var(--brand-curalink-name);
 }
 
 .brand__tag {
@@ -284,7 +281,7 @@ a:hover {
   color: var(--brand-tag);
 }
 
-/* Same green as `.accent` (“local open-source LLM” in the header) */
+/* Retrieval stats: green (teal accent) */
 .sidebar-stats {
   color: var(--accent);
 }
@@ -338,7 +335,7 @@ a:hover {
 .sidebar-stats__expanded {
   margin: 0.65rem 0 0;
   padding-top: 0.55rem;
-  border-top: 1px solid var(--accent-a-35);
+  border: none;
   font-size: 0.72rem;
   line-height: 1.45;
   word-break: break-word;
@@ -367,13 +364,13 @@ a:hover {
   line-height: 1.4;
   color: var(--text-warn-pale);
   background: var(--warn-surface);
-  border: 1px solid var(--warn-a-30);
+  border: none;
 }
 
 .panel {
   margin-top: 1rem;
   padding: 1rem;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface-frost);
 }
@@ -398,15 +395,18 @@ a:hover {
 
 .field input {
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: none;
   background: var(--surface-input);
   color: var(--text);
   padding: 0.55rem 0.65rem;
   font: inherit;
 }
 .field input:focus {
-  outline: 2px solid var(--accent-a-35);
-  border-color: var(--accent-a-50);
+  outline: none;
+}
+.field input:focus-visible {
+  outline: 2px solid var(--accent-a-50);
+  outline-offset: 2px;
 }
 
 .panel__actions {
@@ -430,6 +430,10 @@ a:hover {
   border-color: var(--accent-a-80);
   color: var(--accent-soft);
 }
+.btn:focus-visible {
+  outline: 2px solid var(--accent-a-50);
+  outline-offset: 2px;
+}
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -437,7 +441,7 @@ a:hover {
 .btn--primary,
 .btn--ghost,
 .btn--new-thread {
-  border-color: var(--accent-a-55);
+  border: 1px solid var(--accent-a-55);
   background: var(--accent-a-08);
   color: var(--accent);
 }
@@ -464,6 +468,10 @@ a:hover {
   border-color: var(--accent-a-80);
   color: var(--accent-soft);
 }
+.chip:focus-visible {
+  outline: 2px solid var(--accent-a-50);
+  outline-offset: 2px;
+}
 
 /* Quick prompts only — dark chips + blue hover (original), not global green */
 .sidebar > .panel.panel--compact:not(.sidebar-stats) .chip {
@@ -473,8 +481,8 @@ a:hover {
 }
 
 .sidebar > .panel.panel--compact:not(.sidebar-stats) .chip:hover:not(:disabled) {
-  border-color: var(--accent-2-a-45);
   background: var(--surface-input);
+  border-color: var(--accent-2-a-45);
   color: var(--text);
 }
 
@@ -491,12 +499,15 @@ a:hover {
   align-items: flex-start;
   gap: 1rem;
   padding: 1.25rem 1.5rem 0.5rem;
-  border: 1px solid var(--border);
+  border: none;
+  border-left: 2px solid var(--border-orangellow-light);
+  border-right: 2px solid var(--border-orangellow-light);
   border-radius: var(--radius);
   background: var(--surface-header);
   backdrop-filter: blur(8px);
   color: var(--text);
   overflow: hidden;
+  box-shadow: var(--effect-orangellow-inset-rails);
 }
 
 .main__header h1 {
@@ -525,11 +536,10 @@ a:hover {
 .main__header-intro {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   padding: 0.85rem 1rem 0.95rem;
   background: var(--surface-overlay-55);
-  box-shadow: var(--shadow-yellow-border);
 }
 
 .thread {
@@ -544,7 +554,7 @@ a:hover {
 .thread__end-action {
   margin-top: 0.25rem;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
+  border: none;
   align-self: flex-start;
 }
 
@@ -554,10 +564,10 @@ a:hover {
   align-self: flex-start;
   margin: 3rem 0;
   padding: 1.5rem;
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--glow-empty-red);
   color: var(--muted);
-  box-shadow: var(--shadow-red-border);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -590,6 +600,12 @@ a:hover {
   scroll-margin-bottom: 0.75rem;
 }
 
+#session-context,
+#quick-prompts {
+  border: 1px solid var(--border);
+  box-shadow: var(--glow-sidebar-form-panels);
+}
+
 .empty__title {
   margin: 0;
   font-size: inherit;
@@ -611,7 +627,7 @@ a:hover {
   width: 100%;
   border-radius: var(--radius);
   padding: 1rem 1.1rem;
-  border: 1px solid var(--border);
+  border: none;
   background: var(--surface-bubble);
   color: var(--text);
 }
@@ -626,55 +642,69 @@ a:hover {
   padding: 0.4rem 0.65rem;
   font-size: 1.05rem;
   color: var(--accent-2);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface-markdown-block);
-  box-shadow: var(--shadow-yellow-border);
 }
 .bubble__content.markdown h2:first-child {
   margin-top: 0;
 }
+
+/* Condition overview, Research insights, Clinical trials, Caveats — same chrome as .main__header */
+.bubble__content.markdown h2:nth-of-type(1),
+.bubble__content.markdown h2:nth-of-type(2),
+.bubble__content.markdown h2:nth-of-type(3),
+.bubble__content.markdown h2:nth-of-type(4) {
+  border: none;
+  border-left: 2px solid var(--border-orangellow-light);
+  border-right: 2px solid var(--border-orangellow-light);
+  background: var(--surface-header);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  box-shadow: var(--effect-orangellow-inset-rails);
+}
+
 .bubble__content.markdown p {
   margin: 0.45rem 0;
   padding: 0.55rem 0.75rem;
   line-height: 1.55;
   color: var(--text-secondary);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface-markdown-p);
-  box-shadow: var(--shadow-yellow-border);
+}
+
+/* Body copy under Condition overview + Research insights — same tile chrome as .source-card */
+.bubble__content.markdown h2:nth-of-type(1) ~ p:not(h2:nth-of-type(2) ~ p),
+.bubble__content.markdown h2:nth-of-type(2) ~ p:not(h2:nth-of-type(3) ~ p) {
+  border: 1px solid var(--accent-2-a-28);
+  box-shadow: var(--glow-source-card);
 }
 
 .stats {
   margin-top: 0.75rem;
   font-size: 0.78rem;
   padding: 0.55rem 0.7rem;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface-markdown-block);
-  box-shadow: var(--shadow-yellow-border);
 }
 
 .sources-block {
   margin-top: 1rem;
   padding: 0.85rem 1rem;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: none;
   border-radius: var(--radius);
-  background: var(--surface-sources);
-  box-shadow: var(--shadow-yellow-border);
+  background-color: var(--surface-sources);
+  background-image: none;
 }
+
+/* Same left/right rails as markdown section headings (e.g. Caveats & next steps) */
+.sources-block--publications {
+  border-left: 2px solid var(--border-orangellow-light);
+  border-right: 2px solid var(--border-orangellow-light);
+}
+
 .sources-block h3 {
   margin: 0 0 0.65rem;
   font-size: 0.95rem;
@@ -687,14 +717,11 @@ a:hover {
 }
 
 .source-card {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--border-yellow);
-  border-right: 3px solid var(--border-yellow);
+  border: 1px solid var(--accent-2-a-28);
   border-radius: var(--radius);
   padding: 0.75rem 0.85rem;
   background: var(--surface-source);
-  box-shadow: var(--shadow-yellow-border);
+  box-shadow: var(--glow-source-card);
 }
 .source-card__meta {
   display: flex;
@@ -707,7 +734,7 @@ a:hover {
   font-size: 0.72rem;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: none;
   color: var(--muted);
 }
 .pill--muted {
@@ -715,7 +742,6 @@ a:hover {
 }
 .pill--accent {
   color: var(--pill-warm);
-  border-color: var(--pill-warn-border);
 }
 .source-card__title {
   margin: 0.15rem 0 0.35rem;
@@ -759,14 +785,19 @@ a:hover {
   min-height: 52px;
   max-height: 160px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--highlight);
   background: var(--surface-input);
   color: var(--text);
   padding: 0.65rem 0.75rem;
   font: inherit;
 }
 .composer textarea:focus {
-  outline: 2px solid var(--accent-2-a-35);
+  outline: none;
+  border-color: var(--border-orangellow-light);
+}
+.composer textarea:focus-visible {
+  outline: 2px solid var(--highlight);
+  outline-offset: 2px;
 }
 
 .composer__hint {
@@ -785,9 +816,6 @@ a:hover {
   font-family: var(--mono);
   font-size: 0.78rem;
 }
-.select-all {
-  user-select: all;
-}
 
 .banner {
   margin: 0.75rem 1.5rem 0;
@@ -796,17 +824,17 @@ a:hover {
   font-size: 0.9rem;
 }
 .banner--error {
-  border: 1px solid var(--error-a-45);
+  border: none;
   background: var(--error-surface);
   color: var(--text-error-pale);
 }
 .banner--warn {
-  border: 1px solid var(--warn-a-35);
+  border: none;
   background: var(--warn-surface-muted);
   color: var(--text-warn-pale);
 }
 .banner--info {
-  border: 1px solid var(--accent-2-a-35);
+  border: none;
   background: var(--surface-info-banner);
   color: var(--text-info);
 }
@@ -869,10 +897,7 @@ a:hover {
   }
 
   .sidebar {
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    border-left: 3px solid var(--border-yellow);
-    border-right: 3px solid var(--border-yellow);
+    border: none;
   }
 
   .main__header {

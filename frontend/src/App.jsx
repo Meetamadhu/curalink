@@ -259,12 +259,6 @@ export default function App() {
             </>
           )}
         </div>
-
-        {conversationId && (
-          <p className="mono subtle layout__thread-id">
-            Thread: <span className="select-all">{String(conversationId)}</span>
-          </p>
-        )}
       </aside>
       </div>
 
@@ -342,7 +336,7 @@ export default function App() {
                     <div className="stats mono subtle">Expanded query: {m.meta.expandedQuery}</div>
                   )}
                   {m.payload?.sources?.publications?.length > 0 && (
-                    <div className="sources-block">
+                    <div className="sources-block sources-block--publications">
                       <h3>Publication sources</h3>
                       <div className="source-grid">
                         {m.payload.sources.publications.map((p) => (
