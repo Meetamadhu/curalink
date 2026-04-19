@@ -674,9 +674,10 @@ a:hover {
   background: var(--surface-markdown-p);
 }
 
-/* Body copy under Condition overview + Research insights — same tile chrome as .source-card */
+/* Body copy under Condition overview, Research insights, Clinical trials — same tile chrome as .source-card */
 .bubble__content.markdown h2:nth-of-type(1) ~ p:not(h2:nth-of-type(2) ~ p),
-.bubble__content.markdown h2:nth-of-type(2) ~ p:not(h2:nth-of-type(3) ~ p) {
+.bubble__content.markdown h2:nth-of-type(2) ~ p:not(h2:nth-of-type(3) ~ p),
+.bubble__content.markdown h2:nth-of-type(3) ~ p:not(h2:nth-of-type(4) ~ p) {
   border: 1px solid var(--accent-2-a-28);
   box-shadow: var(--glow-source-card);
 }
@@ -840,11 +841,21 @@ a:hover {
 }
 
 @media (max-width: 960px) {
+  /* Explicit stack: logo → Assistant → thread/empty → composer → session → stats */
   .layout {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "brand"
+      "header"
+      "main"
+      "composer"
+      "panels"
+      "stats";
     gap: 0.75rem;
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .layout > .layout__sidebar-column {
@@ -852,27 +863,28 @@ a:hover {
   }
 
   .layout > .sidebar--top {
-    order: 1;
+    grid-area: brand;
   }
 
   .layout > .main__header {
-    order: 2;
+    grid-area: header;
   }
 
   .layout > .main {
-    order: 3;
-  }
-
-  .layout > .layout__sidebar-panels {
-    order: 4;
+    grid-area: main;
+    min-height: 0;
   }
 
   .layout > .composer {
-    order: 5;
+    grid-area: composer;
+  }
+
+  .layout > .layout__sidebar-panels {
+    grid-area: panels;
   }
 
   .layout > .layout__sidebar-stats {
-    order: 6;
+    grid-area: stats;
   }
 
   .layout > .sidebar--top,
@@ -883,11 +895,6 @@ a:hover {
   .layout > .layout__sidebar-stats {
     width: 100%;
     min-width: 0;
-  }
-
-  .layout > .main {
-    flex: 1;
-    min-height: 0;
   }
 
   .layout > .layout__sidebar-panels,
@@ -908,17 +915,54 @@ a:hover {
   }
 
   .main__header > button {
-    order: 1;
     width: 100%;
     max-width: none;
   }
 
   .main__header-intro {
-    order: 2;
     flex: none;
     width: 100%;
     max-width: none;
     min-width: 0;
+  }
+
+  .main__header-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .main__header h1 {
+    font-size: 1.2rem;
+  }
+
+  .main__header-welcome {
+    min-width: 0;
+    font-size: 0.98rem;
+    line-height: 1.42;
+  }
+
+  .sidebar--top .brand {
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0;
+    gap: 0.65rem;
+  }
+
+  .sidebar--top .brand__logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sidebar--top .brand__name {
+    font-size: 1.25rem;
+  }
+
+  .sidebar--top .brand__tag {
+    font-size: 0.75rem;
+  }
+
+  .sidebar--top {
+    padding: 0.85rem 0.85rem 0.65rem;
   }
 
   .thread {
@@ -934,5 +978,10 @@ a:hover {
   .composer {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+  }
+
+  .empty {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
 }
