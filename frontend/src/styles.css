@@ -31,8 +31,6 @@
   --surface-sidebar-c: rgba(12, 17, 25, 0.98);
   --surface-blue-deep: rgba(26, 42, 61, 0.55);
   --surface-info-banner: rgba(15, 35, 55, 0.45);
-  /* Left sidebar column (behind session / quick / stats + brand) */
-  --surface-sidebar-column: rgba(22, 42, 62, 0.92);
 
   /* Typography */
   --text: #e8eef6;
@@ -113,12 +111,13 @@
   --border-orangellow-light: #15803d;
   --effect-orangellow-inset-rails:
     inset 0 10px 22px -10px rgba(34, 197, 94, 0.18), inset 0 -10px 22px -10px rgba(34, 197, 94, 0.18);
-  /* Session context + Quick prompts aside */
-  --shadow-session-panels:
-    0 8px 28px rgba(0, 0, 0, 0.4), 0 0 32px rgba(253, 230, 138, 0.16), 0 2px 10px rgba(0, 0, 0, 0.22);
-  /* Session context, Quick prompts, Retrieval stats */
-  --glow-sidebar-form-panels:
-    0 0 28px rgba(253, 230, 138, 0.3), 0 0 44px rgba(90, 176, 255, 0.2), 0 6px 26px rgba(0, 0, 0, 0.38);
+  /* Sidebar: softer shadows than main chrome */
+  --shadow-sidebar-session:
+    0 4px 16px rgba(0, 0, 0, 0.28), 0 0 12px rgba(253, 230, 138, 0.06), 0 2px 8px rgba(0, 0, 0, 0.16);
+  --glow-sidebar-panels-soft:
+    0 0 14px rgba(253, 230, 138, 0.1), 0 0 22px rgba(90, 176, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.22);
+  --effect-sidebar-inset-rails:
+    inset 0 8px 18px -10px rgba(34, 197, 94, 0.09), inset 0 -8px 18px -10px rgba(34, 197, 94, 0.09);
   /* Empty thread — “Start a research conversation” */
   --glow-empty-red:
     0 0 28px rgba(248, 113, 113, 0.45), 0 0 52px rgba(239, 68, 68, 0.22), 0 8px 28px rgba(0, 0, 0, 0.4);
@@ -167,7 +166,7 @@ a:hover {
   box-sizing: border-box;
 }
 
-/* Left column: Curalink + session + stats (sticky rail); on mobile see @media */
+/* Left column: same base tint as .main (surface-overlay-35) for visual consistency */
 .layout > .layout__sidebar-lower {
   grid-area: sidecol;
   align-self: start;
@@ -183,12 +182,8 @@ a:hover {
   border-left: 2px solid var(--border-orangellow-light);
   border-right: 2px solid var(--border-orangellow-light);
   overflow: hidden;
-  box-shadow: var(--effect-orangellow-inset-rails);
-  background: var(--surface-sidebar-column);
-}
-
-.layout__sidebar-lower > .sidebar {
-  background: transparent;
+  box-shadow: var(--effect-sidebar-inset-rails);
+  background: var(--surface-overlay-35);
 }
 
 .layout > .main__header {
@@ -211,9 +206,9 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  background-color: transparent;
+  background-color: var(--surface-overlay-35);
   background-image: none;
-  box-shadow: var(--shadow-session-panels);
+  box-shadow: var(--shadow-sidebar-session);
 }
 
 .layout > .composer {
@@ -240,7 +235,7 @@ a:hover {
 
 .sidebar .panel.sidebar-stats {
   border: 1px solid var(--border);
-  box-shadow: var(--glow-sidebar-form-panels);
+  box-shadow: var(--glow-sidebar-panels-soft);
 }
 
 /* Session context + Quick prompts (not Retrieval stats) */
@@ -262,11 +257,11 @@ a:hover {
   border: none;
   border-left: 2px solid var(--border-orangellow-light);
   border-right: 2px solid var(--border-orangellow-light);
-  background-color: var(--surface-sidebar-column);
+  background-color: var(--surface-overlay-35);
   background-image: none;
   backdrop-filter: blur(12px);
   overflow: hidden;
-  box-shadow: var(--effect-orangellow-inset-rails);
+  box-shadow: var(--effect-sidebar-inset-rails);
 }
 
 .brand__logo {
@@ -634,7 +629,7 @@ a:hover {
 #session-context,
 #quick-prompts {
   border: 1px solid var(--border);
-  box-shadow: var(--glow-sidebar-form-panels);
+  box-shadow: var(--glow-sidebar-panels-soft);
 }
 
 .empty__title {
@@ -940,14 +935,6 @@ a:hover {
   .layout > .layout__sidebar-stats,
   .layout > .composer {
     flex-shrink: 0;
-  }
-
-  /* Sidebar stack is flattened on mobile — paint light blue on each slice */
-  .layout > .sidebar.sidebar--top,
-  .layout > .sidebar.layout__sidebar-session,
-  .layout > .sidebar.layout__sidebar-quick,
-  .layout > .sidebar.layout__sidebar-stats {
-    background: var(--surface-sidebar-column);
   }
 
   .sidebar {
