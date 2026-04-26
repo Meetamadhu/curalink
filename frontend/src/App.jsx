@@ -119,8 +119,13 @@ export default function App() {
     setError("");
   }
 
+  function scrollPageToTop() {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    threadRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
-    <div className="layout">
+    <div className="layout" id="page-top">
       <div className="layout__sidebar-lower">
       <aside className="sidebar sidebar--top" aria-label="About Curalink">
         <div className="brand">
@@ -374,7 +379,8 @@ export default function App() {
               <button
                 type="button"
                 className="btn btn--ghost thread__back-top"
-                onClick={() => threadRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+                onClick={scrollPageToTop}
+                aria-label="Scroll to top of page"
               >
                 Back to top
               </button>
