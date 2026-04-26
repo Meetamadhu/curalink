@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { postChat } from "./api.js";
 
@@ -52,6 +52,7 @@ export default function App() {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const threadRef = useRef(null);
 
   const hasContext = useMemo(() => Boolean(form.disease || form.location || form.patientName), [form]);
 
@@ -267,8 +268,7 @@ export default function App() {
       <header className="main__header">
         <div className="main__header-intro">
           <div className="main__header-title-row">
-            <h1>Assistant</h1>
-            <p className="main__header-welcome">Welcome — I am your AI Medical Research assistant.</p>
+            <h1 className="main__header-welcome">Welcome — I am your AI Medical Research assistant.</h1>
           </div>
         </div>
         <button type="button" className="btn btn--ghost btn--new-thread" onClick={startNewConversation} disabled={loading}>
@@ -285,7 +285,7 @@ export default function App() {
           </div>
         )}
 
-        <section className="thread" aria-live="polite">
+        <section ref={threadRef} className="thread" aria-live="polite" id="thread">
           {messages.length === 0 && (
             <div className="empty">
               <h2 className="empty__title">Start a research conversation</h2>
@@ -367,14 +367,16 @@ export default function App() {
             </div>
           ))}
           {messages.length > 0 && (
-            <div className="thread__end-action">
+            <div className="thread__end">
+              <p className="thread__end-label subtle" role="status">
+                End of results
+              </p>
               <button
                 type="button"
-                className="btn btn--ghost btn--new-thread"
-                onClick={startNewConversation}
-                disabled={loading}
+                className="btn btn--ghost thread__back-top"
+                onClick={() => threadRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
               >
-                New conversation
+                Back to top
               </button>
             </div>
           )}
