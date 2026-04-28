@@ -1,6 +1,7 @@
 import { fetchOpenAlexWorks } from "./openalex.js";
 import { fetchPubMedWorks, enrichPubMedAbstracts } from "./pubmed.js";
 import { fetchClinicalTrials } from "./clinicalTrials.js";
+import { semanticOptionsFromEnv } from "./embeddings.js";
 import { rankPublications, rankTrials } from "./ranking.js";
 import { deterministicExpansion, buildConversationSummary } from "./queryContext.js";
 import { expandQueryWithLlm, synthesizeAnswerWithLlm, fallbackSynthesis } from "./llm.js";
@@ -26,11 +27,93 @@ function mergeExpansion(det, llm) {
   };
 }
 
+/** Provenance / curation signal for investor-facing source cards. */
+function trustMetaForSource(platform, kind) {
+  const s = String(platform || "").toLowerCase();
+  if (kind === "trial") {
+    if (s.includes("clinical"))
+      return { trustTier: "registry", trustLabel: "Official registry", trustClass: "trust--registry" };
+    return { trustTier: "listing", trustLabel: "Trial listing", trustClass: "trust--listing" };
+  }
+  if (s.includes("pubmed"))
+    return { trustTier: "indexed", trustLabel: "Indexed literature", trustClass: "trust--indexed" };
+  if (s.includes("openalex"))
+    return { trustTier: "graph", trustLabel: "Open bibliographic graph", trustClass: "trust--graph" };
+  return { trustTier: "external", trustLabel: "External source", trustClass: "trust--external" };
+}
+
+/** Rank-based retrieval fit within each list (publications vs trials). */
+function evidenceFitMeta(rankIndex, listLength) {
+  const n = Math.max(listLength, 1);
+  const strongCap = Math.max(1, Math.ceil(n * 0.375));
+  const modCap = Math.max(strongCap + 1, Math.ceil(n * 0.75));
+  if (rankIndex <= strongCap)
+    return { evidenceStrength: "strong", evidenceLabel: "Strong fit", evidenceClass: "evidence--strong" };
+  if (rankIndex <= modCap)
+    return { evidenceStrength: "moderate", evidenceLabel: "Moderate fit", evidenceClass: "evidence--moderate" };
+  return { evidenceStrength: "emerging", evidenceLabel: "Exploratory fit", evidenceClass: "evidence--emerging" };
+}
+
+function computeQualitySignals(synthesis, attributions, retrievalStats) {
+  const pubs = attributions.publications || [];
+  const trials = attributions.trials || [];
+  const usedP = Array.isArray(synthesis?.usedPublicationNumbers) ? synthesis.usedPublicationNumbers : null;
+  const usedT = Array.isArray(synthesis?.usedTrialNumbers) ? synthesis.usedTrialNumbers : null;
+
+  const scoresFor = (items, used) => {
+    const use = used && used.length > 0 ? new Set(used.map(Number)) : null;
+    return items
+      .filter((it) => use == null || use.has(Number(it.index)))
+      .map((it) => Number(it.relevanceScore) || 0);
+  };
+
+  let citedScores = [...scoresFor(pubs, usedP), ...scoresFor(trials, usedT)];
+  if (citedScores.length === 0) {
+    citedScores = [
+      ...pubs.slice(0, 4).map((p) => Number(p.relevanceScore) || 0),
+      ...trials.slice(0, 4).map((t) => Number(t.relevanceScore) || 0),
+    ];
+  }
+
+  const allScores = [...pubs, ...trials].map((x) => Number(x.relevanceScore) || 0);
+  const maxS = allScores.length ? Math.max(...allScores, 0.001) : 1;
+  const minS = allScores.length ? Math.min(...allScores) : 0;
+  const span = Math.max(maxS - minS, 0.001);
+  const mean = citedScores.length ? citedScores.reduce((a, b) => a + b, 0) / citedScores.length : (minS + maxS) / 2;
+  const normalized = (mean - minS) / span;
+  const retrievalAlignment = Math.min(96, Math.max(34, Math.round(36 + normalized * 58)));
+
+  let evidenceStrengthSummary = "Moderate";
+  if (retrievalAlignment >= 78) evidenceStrengthSummary = "High";
+  else if (retrievalAlignment < 55) evidenceStrengthSummary = "Emerging";
+
+  const merged = retrievalStats?.mergedPublicationCandidates ?? 0;
+  const trialC = retrievalStats?.trialCandidates ?? 0;
+  const poolBreadth = Math.min(100, Math.round(28 + Math.log1p(merged + trialC) * 10));
+
+  const citedSourceSlots =
+    (usedP && usedP.length > 0) || (usedT && usedT.length > 0)
+      ? (usedP?.length || 0) + (usedT?.length || 0)
+      : pubs.length + trials.length;
+
+  return {
+    retrievalAlignment,
+    poolBreadth,
+    citedSourceSlots,
+    evidenceStrengthSummary,
+    disclaimer:
+      "Scores reflect retrieval rank and synthesis coverage — not diagnostic certainty or regulatory endorsement.",
+  };
+}
+
 function buildAttributions(rankedPublications, rankedTrials, synthesis) {
   const pubNums = Array.isArray(synthesis?.usedPublicationNumbers)
     ? synthesis.usedPublicationNumbers
     : rankedPublications.map((_, i) => i + 1);
   const trialNums = Array.isArray(synthesis?.usedTrialNumbers) ? synthesis.usedTrialNumbers : rankedTrials.map((_, i) => i + 1);
+
+  const pubN = rankedPublications.length;
+  const trialN = rankedTrials.length;
 
   const publications = rankedPublications.map((p, idx) => ({
     index: idx + 1,
@@ -42,6 +125,9 @@ function buildAttributions(rankedPublications, rankedTrials, synthesis) {
     url: p.url,
     snippet: p.supportingSnippet || (p.abstract || "").slice(0, 400),
     relevanceScore: p.relevanceScore,
+    ...(p.semanticSimilarity != null ? { semanticSimilarity: p.semanticSimilarity } : {}),
+    ...trustMetaForSource(p.platform, "pub"),
+    ...evidenceFitMeta(idx + 1, pubN),
   }));
 
   const trials = rankedTrials.map((t, idx) => ({
@@ -56,6 +142,9 @@ function buildAttributions(rankedPublications, rankedTrials, synthesis) {
     url: t.url,
     snippet: t.supportingSnippet || "",
     relevanceScore: t.relevanceScore,
+    ...(t.semanticSimilarity != null ? { semanticSimilarity: t.semanticSimilarity } : {}),
+    ...trustMetaForSource(t.platform, "trial"),
+    ...evidenceFitMeta(idx + 1, trialN),
   }));
 
   return {
@@ -149,8 +238,17 @@ export async function runResearchPipeline(
     tool: env.PUBMED_TOOL,
   }).catch(() => mergedPubs);
 
-  const rankedPublications = rankPublications(enriched, { queryText: queryForRank, topN: 8 });
-  const rankedTrials = rankTrials(ct, { queryText: queryForRank, topN: 8 });
+  const semanticOpts = semanticOptionsFromEnv(process.env, { fast });
+  const rankedPublications = await rankPublications(enriched, {
+    queryText: queryForRank,
+    topN: 8,
+    semantic: semanticOpts,
+  });
+  const rankedTrials = await rankTrials(ct, {
+    queryText: queryForRank,
+    topN: 8,
+    semantic: semanticOpts,
+  });
 
   console.log(
     "[curalink] ranked top pubs/trials; candidates",
@@ -158,7 +256,8 @@ export async function runResearchPipeline(
     "/",
     ct.length,
     "— synthesis",
-    fast ? "(fast)" : "(full)"
+    fast ? "(fast)" : "(full)",
+    semanticOpts ? `; semantic=${semanticOpts.preset} (${semanticOpts.modelId})` : "; semantic=off"
   );
 
   let synthesis = null;
@@ -187,31 +286,37 @@ export async function runResearchPipeline(
   }
 
   const attributions = buildAttributions(rankedPublications, rankedTrials, synthesis);
+  const retrievalStats = {
+    openAlexCandidates: oa.length,
+    pubmedCandidates: pm.length,
+    trialCandidates: ct.length,
+    mergedPublicationCandidates: enriched.length,
+  };
+  const qualitySignals = computeQualitySignals(synthesis, attributions, retrievalStats);
 
   const assistantMarkdown = [
-    `## Condition overview`,
-    synthesis.conditionOverview,
+    `## Condition Summary`,
+    synthesis.conditionSummary,
     ``,
-    `## Research insights`,
-    synthesis.researchInsights,
+    `## Latest Evidence`,
+    synthesis.latestEvidence,
     ``,
-    `## Clinical trials`,
-    synthesis.clinicalTrialsSummary,
+    `## Recommended Clinical Trials`,
+    synthesis.recommendedClinicalTrials,
     ``,
-    `## Caveats & next steps`,
-    synthesis.caveatsAndNextSteps,
+    `## Doctor Discussion Points`,
+    synthesis.doctorDiscussionPoints,
+    ``,
+    `## References`,
+    synthesis.references,
   ].join("\n");
 
   return {
     assistantText: assistantMarkdown,
     assistantPayload: {
       expansion,
-      retrievalStats: {
-        openAlexCandidates: oa.length,
-        pubmedCandidates: pm.length,
-        trialCandidates: ct.length,
-        mergedPublicationCandidates: enriched.length,
-      },
+      retrievalStats,
+      qualitySignals,
       structured: synthesis,
       sources: attributions,
       errors,
@@ -219,6 +324,16 @@ export async function runResearchPipeline(
     meta: {
       expandedQuery: expansion.expandedQuery,
       queryForRank,
+      embedding: semanticOpts
+        ? {
+            enabled: true,
+            preset: semanticOpts.preset,
+            modelId: semanticOpts.modelId,
+            label: semanticOpts.label,
+            semanticWeight: semanticOpts.semanticWeight,
+            poolSize: semanticOpts.poolSize,
+          }
+        : { enabled: false },
     },
   };
 }

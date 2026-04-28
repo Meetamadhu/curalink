@@ -17,9 +17,11 @@ async function main() {
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
 
-  app.get("/api/health", (_req, res) => {
+  const healthJson = (_req, res) => {
     res.json({ ok: true, service: "curalink-backend" });
-  });
+  };
+  app.get("/api/health", healthJson);
+  app.get("/health", healthJson);
 
   app.use("/api/chat", chatRouter);
 
@@ -39,8 +41,22 @@ async function main() {
     }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Curalink API listening on 0.0.0.0:${PORT}`);
+  });
+  server.on("error", (err) => {
+    if (err?.code === "EADDRINUSE") {
+      console.error(
+        `[curalink] Port ${PORT} is already in use (EADDRINUSE). ` +
+          `Stop the other process on this port (often a duplicate npm run dev / node --watch), ` +
+          `or use a different port:\n` +
+          `  PowerShell:  $env:PORT=5001; npm run dev\n` +
+          `  CMD:         set PORT=5001&& npm run dev`
+      );
+    } else {
+      console.error("[curalink] HTTP server error:", err);
+    }
+    process.exit(1);
   });
 }
 

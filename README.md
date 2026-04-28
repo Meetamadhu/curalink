@@ -11,8 +11,8 @@ End-to-end research companion: **query understanding → broad retrieval (OpenAl
    - OpenAlex: up to **200** works.
    - PubMed: up to **200** IDs → batched esummary + abstract **efetch** enrichment for the top slice.
    - ClinicalTrials.gov v2: **paged** fetch up to **~220** studies (`query.cond`, `query.term`, optional `query.locn`).
-5. **Ranking**: Hybrid **keyword relevance** + **recency** + light **venue / recruitment** signals → **top 8** publications and **top 8** trials, each with a **supporting snippet** for attribution.
-6. **Reasoning**: **Ollama** generates strict JSON sections grounded on numbered `P*` / `T*` sources; if Ollama is unavailable, a **deterministic fallback** still lists retrieved evidence.
+5. **Ranking**: Hybrid **keyword relevance** + **recency** + light **venue / recruitment** signals → optional **semantic rerank** with **Sentence Transformers** (`@xenova/transformers`: presets MiniLM, BGE-small, E5-small, Instructor-large ONNX) blended into scores over a configurable candidate pool → **top 8** publications and **top 8** trials, each with a **supporting snippet** for attribution. Semantic rerank is **off** when `CURALINK_FAST_MODE=1` or `CURALINK_EMBEDDINGS=0`.
+6. **Reasoning**: **Ollama** emits structured JSON (mapped to markdown): **Condition Summary**, **Latest Evidence**, **Recommended Clinical Trials**, **Doctor Discussion Points**, **References** — grounded on numbered `P*` / `T*` sources; if Ollama is unavailable, a **deterministic fallback** still lists retrieved evidence.
 
 ## Prerequisites
 
@@ -28,7 +28,8 @@ Copy `backend/.env.example` to `backend/.env` and set at least:
 - `PUBMED_EMAIL` (NCBI polite-use)
 - `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
 - `OLLAMA_MODEL` (e.g. `llama3.2`)
-- `CURALINK_FAST_MODE` — default **`1`** in code (smaller retrieval, skips the extra LLM query-expansion call, shorter Ollama synthesis budget). Set to **`0`** or **`full`** for maximum depth (slower on CPU).
+- `CURALINK_FAST_MODE` — default **`1`** in code (smaller retrieval, skips the extra LLM query-expansion call, shorter Ollama synthesis budget, **disables semantic embedding rerank**). Set to **`0`** or **`full`** for maximum depth (slower on CPU).
+- **Semantic ranking** (when `CURALINK_FAST_MODE` is `0`/`full`): `CURALINK_EMBEDDINGS` default on; `CURALINK_EMBEDDING_PRESET` = `minilm` · `bge-small` · `e5-small` · `instructor-xl` (ONNX **Instructor-large** build); optional `CURALINK_EMBEDDING_MODEL` overrides with any Xenova Hub model id; `CURALINK_EMBEDDING_WEIGHT` (default `0.55`); `CURALINK_EMBEDDING_POOL` (default `64`).
 
 Frontend dev proxy targets `http://127.0.0.1:5000`. For production you can either:
 

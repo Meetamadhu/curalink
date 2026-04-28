@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { postChat } from "./api.js";
 
@@ -9,12 +9,143 @@ const initialForm = {
   location: "",
 };
 
-function SourceCard({ item, kind }) {
+const RESEARCH_PHASES = [
+  { title: "Retrieving", detail: "OpenAlex, PubMed, and ClinicalTrials.gov" },
+  { title: "Ranking", detail: "Deduplicating and scoring candidate matches" },
+  { title: "Synthesizing", detail: "Local model producing structured sections" },
+  { title: "Finalizing", detail: "Binding sources, trust tiers, and alignment scores" },
+];
+
+function ResearchProgress({ active }) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setPhase(0);
+      return;
+    }
+    setPhase(0);
+    const id = setInterval(() => {
+      setPhase((p) => Math.min(p + 1, RESEARCH_PHASES.length - 1));
+    }, 2400);
+    return () => clearInterval(id);
+  }, [active]);
+  if (!active) return null;
+  const cur = RESEARCH_PHASES[phase];
+  return (
+    <div className="research-progress" role="status" aria-live="polite" aria-busy="true">
+      <div className="research-progress__bar-wrap" aria-hidden="true">
+        <div className="research-progress__bar" />
+      </div>
+      <div className="research-progress__body">
+        <div className="research-progress__phase">{cur.title}</div>
+        <p className="research-progress__detail">{cur.detail}</p>
+        <ol className="research-progress__steps">
+          {RESEARCH_PHASES.map((s, i) => (
+            <li
+              key={s.title}
+              className={i < phase ? "is-done" : i === phase ? "is-active" : "is-pending"}
+            >
+              <span className="research-progress__step-dot" aria-hidden="true" />
+              <span>{s.title}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="research-progress__hint subtle">
+          Full runs often take <strong>1–5 minutes</strong> on CPU; the thread updates when the answer is ready.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EvidenceQualityStrip({ quality, retrievalStats }) {
+  if (!quality) return null;
+  const ra = quality.retrievalAlignment;
+  const pb = quality.poolBreadth;
+  const summary = quality.evidenceStrengthSummary;
+  const summaryClass =
+    summary === "High" ? "quality-chip--high" : summary === "Emerging" ? "quality-chip--low" : "quality-chip--mid";
+  return (
+    <div className="quality-strip">
+      <div className="quality-strip__row">
+        <div className="quality-metric">
+          <div className="quality-metric__head">
+            <span className="quality-metric__label">Alignment confidence</span>
+            <span className="quality-metric__value mono">{ra}</span>
+          </div>
+          <div className="quality-metric__track" aria-hidden="true">
+            <div className="quality-metric__fill" style={{ width: `${ra}%` }} />
+          </div>
+        </div>
+        <div className="quality-metric">
+          <div className="quality-metric__head">
+            <span className="quality-metric__label">Pool depth index</span>
+            <span className="quality-metric__value mono">{pb}</span>
+          </div>
+          <div className="quality-metric__track" aria-hidden="true">
+            <div className="quality-metric__fill quality-metric__fill--alt" style={{ width: `${pb}%` }} />
+          </div>
+        </div>
+        <div className={`quality-chip ${summaryClass}`} title="Summary of how tightly retrieved items match the query">
+          <span className="quality-chip__k">Evidence</span>
+          <span className="quality-chip__v">{summary}</span>
+        </div>
+      </div>
+      <p className="quality-strip__note subtle">{quality.disclaimer}</p>
+      {retrievalStats && (
+        <p className="quality-strip__stats mono subtle">
+          Candidates — OA {retrievalStats.openAlexCandidates} · PM {retrievalStats.pubmedCandidates} · trials{" "}
+          {retrievalStats.trialCandidates} · merged pubs {retrievalStats.mergedPublicationCandidates}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function trustDisplay(item, kind) {
+  if (item.trustLabel)
+    return { label: item.trustLabel, className: item.trustClass || "trust--external" };
+  const s = String(item.platform || "").toLowerCase();
+  if (kind === "trial")
+    return s.includes("clinical")
+      ? { label: "Official registry", className: "trust--registry" }
+      : { label: "Trial listing", className: "trust--listing" };
+  if (s.includes("pubmed")) return { label: "Indexed literature", className: "trust--indexed" };
+  if (s.includes("openalex")) return { label: "Open bibliographic graph", className: "trust--graph" };
+  return { label: "External source", className: "trust--external" };
+}
+
+function evidenceDisplay(item, listLength) {
+  if (item.evidenceLabel)
+    return { label: item.evidenceLabel, className: item.evidenceClass || "evidence--moderate" };
+  const n = Math.max(listLength, 1);
+  const idx = Number(item.index) || 1;
+  const strongCap = Math.max(1, Math.ceil(n * 0.375));
+  const modCap = Math.max(strongCap + 1, Math.ceil(n * 0.75));
+  if (idx <= strongCap) return { label: "Strong fit", className: "evidence--strong" };
+  if (idx <= modCap) return { label: "Moderate fit", className: "evidence--moderate" };
+  return { label: "Exploratory fit", className: "evidence--emerging" };
+}
+
+function SourceCard({ item, kind, listLength }) {
+  const trust = trustDisplay(item, kind);
+  const ev = evidenceDisplay(item, listLength ?? 8);
   return (
     <article className={`source-card source-card--${kind}`}>
       <div className="source-card__meta">
         <span className="pill">{item.platform}</span>
         {item.label && <span className="pill pill--muted">{item.label}</span>}
+        <span className={`pill pill--trust ${trust.className}`} title="Provenance / curation signal">
+          {trust.label}
+        </span>
+        <span className={`pill pill--evidence ${ev.className}`} title="Retrieval rank fit within this list">
+          {ev.label}
+        </span>
+        {item.relevanceScore != null && (
+          <span className="pill pill--muted" title="Composite retrieval score from the ranker">
+            Rank {item.relevanceScore}
+          </span>
+        )}
         {item.year != null && kind === "pub" && <span className="pill pill--muted">{item.year}</span>}
         {item.status && kind === "trial" && <span className="pill pill--accent">{item.status}</span>}
       </div>
@@ -45,6 +176,34 @@ function SourceCard({ item, kind }) {
   );
 }
 
+function SafetyBoundariesContent({ titleId }) {
+  return (
+    <>
+      <h3 id={titleId}>Safety & Clinical Boundaries</h3>
+      <p className="safety-panel__lead">
+        This system is designed as a <strong>Medical Research Assistant</strong>
+        {" — "}not a diagnosis engine.
+      </p>
+      <p className="safety-panel__label subtle">Responses are:</p>
+      <ul className="safety-panel__list safety-panel__list--emphasis">
+        <li>research-backed</li>
+        <li>source-attributed</li>
+        <li>evidence-focused</li>
+      </ul>
+      <p className="safety-panel__label subtle">but intentionally avoid:</p>
+      <ul className="safety-panel__list safety-panel__list--caution">
+        <li>direct prescriptions</li>
+        <li>diagnosis claims</li>
+        <li>treatment decisions</li>
+      </ul>
+      <p className="safety-panel__footer subtle">
+        The assistant is positioned as a health research companion to support doctor-patient discussions, not replace
+        professional medical advice.
+      </p>
+    </>
+  );
+}
+
 export default function App() {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -52,9 +211,37 @@ export default function App() {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const threadRef = useRef(null);
 
   const hasContext = useMemo(() => Boolean(form.disease || form.location || form.patientName), [form]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 960px)");
+    const onViewportChange = () => {
+      if (!mq.matches) setMobileNavOpen(false);
+    };
+    mq.addEventListener("change", onViewportChange);
+    return () => mq.removeEventListener("change", onViewportChange);
+  }, []);
 
   const lastRunStats = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -212,7 +399,12 @@ export default function App() {
         </div>
       </aside>
 
-      <aside className="sidebar layout__sidebar-stats" aria-label="Retrieval stats" aria-live="polite">
+      <aside
+        className="sidebar layout__sidebar-stats"
+        aria-label="Retrieval stats"
+        aria-live="polite"
+        id="retrieval-stats"
+      >
         <div className="panel panel--compact sidebar-stats">
           <h3>Retrieval stats</h3>
           {loading && !lastRunStats && <p className="sidebar-stats__empty subtle">Waiting for the latest run…</p>}
@@ -273,7 +465,24 @@ export default function App() {
       <header className="main__header">
         <div className="main__header-intro">
           <div className="main__header-title-row">
-            <h1 className="main__header-welcome">Welcome — I am your AI Medical Research assistant.</h1>
+            <h1 className="main__header-welcome">
+              Welcome — I am your AI{" "}
+              <span className="main__header-welcome__role">Medical Research Assistant</span>.
+            </h1>
+            <button
+              type="button"
+              className="mobile-nav-toggle"
+              aria-label={mobileNavOpen ? "Close section menu" : "Open section menu"}
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav-panel"
+              onClick={() => setMobileNavOpen((o) => !o)}
+            >
+              <span className="mobile-nav-toggle__bars" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
           </div>
         </div>
         <button type="button" className="btn btn--ghost btn--new-thread" onClick={startNewConversation} disabled={loading}>
@@ -283,45 +492,49 @@ export default function App() {
 
       <main className="main">
         {error && <div className="banner banner--error">{error}</div>}
-        {loading && (
-          <div className="banner banner--info" role="status">
-            Retrieving from OpenAlex, PubMed, and ClinicalTrials.gov, then running the local model. This often takes{" "}
-            <strong>1–5 minutes</strong> on a CPU; the page will update when the answer is ready.
-          </div>
-        )}
+        <ResearchProgress active={loading} />
 
         <section ref={threadRef} className="thread" aria-live="polite" id="thread">
           {messages.length === 0 && (
-            <div className="empty">
-              <h2 className="empty__title">Start a research conversation</h2>
-              <p className="empty__context subtle">
-                <a
-                  href="#session-context"
-                  className="empty__context-link"
-                  title="Jump to Session context in the sidebar"
-                >
-                  Structured context
-                </a>{" "}
-                improves retrieval. Follow-up questions reuse your last disease focus automatically. Use{" "}
-                <a
-                  href="#quick-prompts"
-                  className="empty__context-link"
-                  title="Jump to Quick prompts in the sidebar"
-                >
-                  Quick prompts
-                </a>{" "}
-                for one-tap example questions. Type your own message in the{" "}
-                <a href="#query-field" className="empty__context-link" title="Jump to the query text box">
-                  query field
-                </a>
-                .
-              </p>
-              <p className="empty__body">
-                Ask in natural language, optionally set disease and location on the left. The backend pulls a{" "}
-                <strong>broad candidate pool</strong> (hundreds of items), then <strong>ranks</strong> to the top few
-                with transparent sources.
-              </p>
-            </div>
+            <>
+              <div className="empty">
+                <h2 className="empty__title">Start a research conversation</h2>
+                <p className="empty__context subtle">
+                  <a
+                    href="#session-context"
+                    className="empty__context-link"
+                    title="Jump to Session context in the sidebar"
+                  >
+                    Structured context
+                  </a>{" "}
+                  improves retrieval. Follow-up questions reuse your last disease focus automatically. Use{" "}
+                  <a
+                    href="#quick-prompts"
+                    className="empty__context-link"
+                    title="Jump to Quick prompts in the sidebar"
+                  >
+                    Quick prompts
+                  </a>{" "}
+                  for one-tap example questions. Type your own message in the{" "}
+                  <a href="#query-field" className="empty__context-link" title="Jump to the query text box">
+                    query field
+                  </a>
+                  .
+                </p>
+                <p className="empty__body">
+                  Ask in natural language, optionally set disease and location on the left. The backend pulls a{" "}
+                  <strong>broad candidate pool</strong> (hundreds of items), then <strong>ranks</strong> to the top few
+                  with transparent sources.
+                </p>
+              </div>
+              <section
+                className="main-safety safety-panel safety-panel--landing"
+                id="safety-boundaries"
+                aria-labelledby="safety-landing-title"
+              >
+                <SafetyBoundariesContent titleId="safety-landing-title" />
+              </section>
+            </>
           )}
           {messages.map((m, idx) => (
             <div key={idx} className={`bubble bubble--${m.role}`}>
@@ -332,22 +545,27 @@ export default function App() {
                   <div className="bubble__content markdown">
                     <ReactMarkdown>{m.content}</ReactMarkdown>
                   </div>
-                  {m.payload?.retrievalStats && (
-                    <div className="stats mono subtle">
-                      Candidates — OpenAlex: {m.payload.retrievalStats.openAlexCandidates}, PubMed:{" "}
-                      {m.payload.retrievalStats.pubmedCandidates}, trials: {m.payload.retrievalStats.trialCandidates},
-                      merged pubs: {m.payload.retrievalStats.mergedPublicationCandidates}
-                    </div>
-                  )}
                   {m.meta?.expandedQuery && (
                     <div className="stats mono subtle">Expanded query: {m.meta.expandedQuery}</div>
+                  )}
+                  {m.meta?.embedding?.enabled && (
+                    <div className="stats mono subtle">
+                      Semantic rank — {m.meta.embedding.label ?? m.meta.embedding.preset} ({m.meta.embedding.modelId}) ·{" "}
+                      {Math.round((m.meta.embedding.semanticWeight ?? 0.55) * 100)}% embedding · pool{" "}
+                      {m.meta.embedding.poolSize}
+                    </div>
                   )}
                   {m.payload?.sources?.publications?.length > 0 && (
                     <div className="sources-block sources-block--publications">
                       <h3>Publication sources</h3>
                       <div className="source-grid">
                         {m.payload.sources.publications.map((p) => (
-                          <SourceCard key={p.label + p.url} item={p} kind="pub" />
+                          <SourceCard
+                            key={p.label + p.url}
+                            item={p}
+                            kind="pub"
+                            listLength={m.payload.sources.publications.length}
+                          />
                         ))}
                       </div>
                     </div>
@@ -357,7 +575,12 @@ export default function App() {
                       <h3>Clinical trial sources</h3>
                       <div className="source-grid">
                         {m.payload.sources.trials.map((t) => (
-                          <SourceCard key={t.label + t.url} item={t} kind="trial" />
+                          <SourceCard
+                            key={t.label + t.url}
+                            item={t}
+                            kind="trial"
+                            listLength={m.payload.sources.trials.length}
+                          />
                         ))}
                       </div>
                     </div>
@@ -389,12 +612,12 @@ export default function App() {
         </section>
       </main>
 
-      <footer className="composer">
+      <footer className="composer" id="composer">
         {hasContext && <span className="composer__hint subtle">Using sidebar context for this thread.</span>}
         <div className="composer__row">
           <textarea
             id="query-field"
-            rows={2}
+            rows={3}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a follow-up… (prior disease context is kept on the server)"
@@ -411,6 +634,59 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      {mobileNavOpen && (
+        <>
+          <div
+            className="mobile-nav-backdrop"
+            role="presentation"
+            aria-hidden
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <nav className="mobile-nav-panel" id="mobile-nav-panel" aria-label="Jump to page sections">
+            <div className="mobile-nav-panel__header">
+              <span className="mobile-nav-panel__title">Jump to</span>
+              <button
+                type="button"
+                className="mobile-nav-panel__close"
+                aria-label="Close menu"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <ul className="mobile-nav-panel__list">
+              <li>
+                <a href="#session-context" className="mobile-nav-panel__link" onClick={() => setMobileNavOpen(false)}>
+                  Session context
+                </a>
+              </li>
+              <li>
+                <a href="#quick-prompts" className="mobile-nav-panel__link" onClick={() => setMobileNavOpen(false)}>
+                  Quick prompts
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#query-field"
+                  className="mobile-nav-panel__link"
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    window.setTimeout(() => document.getElementById("query-field")?.focus(), 200);
+                  }}
+                >
+                  Query text area
+                </a>
+              </li>
+              <li>
+                <a href="#retrieval-stats" className="mobile-nav-panel__link" onClick={() => setMobileNavOpen(false)}>
+                  Retrieval stats
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </>
+      )}
     </div>
   );
 }

@@ -164,11 +164,12 @@ export async function synthesizeAnswerWithLlm(
 - If evidence is thin, say so plainly.
 - Never invent citations, authors, years, or trial IDs.
 - This is not personalized medical advice; include appropriate caution.
-Output ONLY valid JSON with keys:
-conditionOverview (string, 2-4 sentences),
-researchInsights (string, rich paragraph(s) referencing P-numbers where used, e.g. (P2)),
-clinicalTrialsSummary (string, paragraph(s) referencing T-numbers where used),
-caveatsAndNextSteps (string, limitations + what a clinician might consider next),
+Output ONLY valid JSON with exactly these keys:
+conditionSummary (string, 2-4 sentences — plain-language overview of the condition/topic as connected to the user's question),
+latestEvidence (string, paragraph(s) on recent or relevant publication findings; cite P-numbers where used, e.g. (P2)),
+recommendedClinicalTrials (string, paragraph(s) on trials worth noting; cite T-numbers where used),
+doctorDiscussionPoints (string, bullet-style or short paragraphs: limitations of evidence, uncertainties, and concrete talking points for a clinician),
+references (string, a concise numbered bibliography of each P and T source you actually relied on — short title + year/status where applicable; URLs may repeat from SOURCES),
 usedPublicationNumbers (array of integers actually relied on),
 usedTrialNumbers (array of integers actually relied on).
 No markdown fences.`;
@@ -198,14 +199,31 @@ Return JSON now.`;
     fast,
   });
   const parsed = safeJsonParse(text);
-  if (
-    parsed &&
-    typeof parsed.conditionOverview === "string" &&
-    typeof parsed.researchInsights === "string"
-  ) {
-    return parsed;
-  }
-  return null;
+  if (!parsed) return null;
+
+  const conditionSummary = parsed.conditionSummary ?? parsed.conditionOverview;
+  const latestEvidence = parsed.latestEvidence ?? parsed.researchInsights;
+  if (typeof conditionSummary !== "string" || typeof latestEvidence !== "string") return null;
+
+  return {
+    conditionSummary,
+    latestEvidence,
+    recommendedClinicalTrials:
+      typeof parsed.recommendedClinicalTrials === "string"
+        ? parsed.recommendedClinicalTrials
+        : typeof parsed.clinicalTrialsSummary === "string"
+          ? parsed.clinicalTrialsSummary
+          : "",
+    doctorDiscussionPoints:
+      typeof parsed.doctorDiscussionPoints === "string"
+        ? parsed.doctorDiscussionPoints
+        : typeof parsed.caveatsAndNextSteps === "string"
+          ? parsed.caveatsAndNextSteps
+          : "",
+    references: typeof parsed.references === "string" ? parsed.references : "",
+    usedPublicationNumbers: parsed.usedPublicationNumbers,
+    usedTrialNumbers: parsed.usedTrialNumbers,
+  };
 }
 
 export function fallbackSynthesis({ disease, additionalQuery, rankedPublications, rankedTrials }) {
@@ -222,12 +240,23 @@ export function fallbackSynthesis({ disease, additionalQuery, rankedPublications
         `(T${i + 1}) ${t.title} — status: ${t.status || "unknown"}. ${(t.supportingSnippet || "").slice(0, 240)}`
     )
     .join("\n\n");
+  const refLines = [
+    ...rankedPublications.map(
+      (p, i) =>
+        `(P${i + 1}) ${p.title}${p.year ? ` (${p.year})` : ""}. ${p.url ? p.url : ""}`
+    ),
+    ...rankedTrials.map((t, i) => `(T${i + 1}) ${t.title}. Status: ${t.status || "unknown"}. ${t.url ? t.url : ""}`),
+  ].join("\n\n");
+
   return {
-    conditionOverview: intro,
-    researchInsights: pubBullets || "No publication matches were retrieved for this query.",
-    clinicalTrialsSummary: trialBullets || "No clinical trial matches were retrieved.",
-    caveatsAndNextSteps:
+    conditionSummary: intro,
+    latestEvidence: pubBullets || "No publication matches were retrieved for this query.",
+    recommendedClinicalTrials: trialBullets || "No clinical trial matches were retrieved.",
+    doctorDiscussionPoints:
       "Automated retrieval can miss relevant work or surface tangential items. Discuss findings with a qualified clinician before acting on them.",
+    references:
+      refLines.trim() ||
+      "No numbered sources were available; verify retrieval settings and try a broader query.",
     usedPublicationNumbers: rankedPublications.map((_, i) => i + 1),
     usedTrialNumbers: rankedTrials.map((_, i) => i + 1),
     _fallback: true,

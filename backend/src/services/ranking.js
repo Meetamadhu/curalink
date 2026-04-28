@@ -55,7 +55,7 @@ const STOP = new Set([
   "be",
 ]);
 
-function tokenize(text) {
+export function tokenize(text) {
   return String(text || "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
@@ -102,35 +102,7 @@ function normalizeTitleKey(title) {
     .slice(0, 120);
 }
 
-/**
- * Merge OpenAlex + PubMed, dedupe by title similarity, rank, return top N.
- */
-export function rankPublications(publications, { queryText, topN = 8 } = {}) {
-  const queryTokens = tokenize(queryText);
-  const byKey = new Map();
-  for (const p of publications) {
-    const key = normalizeTitleKey(p.title);
-    if (!key) continue;
-    const score =
-      3 * keywordScore(queryTokens, p.title, p.abstract) +
-      recencyBoost(p.year) +
-      venueCredibility(p) +
-      (p.platform === "PubMed" ? 0.25 : 0) +
-      Math.log1p(Number(p.citedByCount || 0)) * 0.15;
-    const prev = byKey.get(key);
-    if (!prev || score > prev._score) {
-      byKey.set(key, { ...p, _score: score });
-    }
-  }
-  const merged = [...byKey.values()].sort((a, b) => b._score - a._score);
-  return merged.slice(0, topN).map(({ _score, ...rest }) => ({
-    ...rest,
-    relevanceScore: Number(_score.toFixed(3)),
-    supportingSnippet: snippetFromAbstract(rest.abstract, queryTokens),
-  }));
-}
-
-function snippetFromAbstract(abstract, queryTokens, maxLen = 420) {
+export function snippetFromAbstract(abstract, queryTokens, maxLen = 420) {
   const text = String(abstract || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
   const lower = text.toLowerCase();
@@ -148,7 +120,29 @@ function snippetFromAbstract(abstract, queryTokens, maxLen = 420) {
   return start > 0 ? `…${slice}` : slice;
 }
 
-export function rankTrials(trials, { queryText, topN = 8 } = {}) {
+/** Dedupe by title, lexical + metadata score; full sorted list (before semantic rerank / top-N cut). */
+export function mergeAndScorePublicationsLexical(publications, queryText) {
+  const queryTokens = tokenize(queryText);
+  const byKey = new Map();
+  for (const p of publications) {
+    const key = normalizeTitleKey(p.title);
+    if (!key) continue;
+    const score =
+      3 * keywordScore(queryTokens, p.title, p.abstract) +
+      recencyBoost(p.year) +
+      venueCredibility(p) +
+      (p.platform === "PubMed" ? 0.25 : 0) +
+      Math.log1p(Number(p.citedByCount || 0)) * 0.15;
+    const prev = byKey.get(key);
+    if (!prev || score > prev._score) {
+      byKey.set(key, { ...p, _score: score });
+    }
+  }
+  return [...byKey.values()].sort((a, b) => b._score - a._score);
+}
+
+/** Lexical + light trial signals; full sorted list. */
+export function mergeAndScoreTrialsLexical(trials, queryText) {
   const queryTokens = tokenize(queryText);
   const scored = trials.map((t) => {
     const hay = `${t.title}\n${t.eligibility}\n${t.locations}`;
@@ -159,9 +153,70 @@ export function rankTrials(trials, { queryText, topN = 8 } = {}) {
     return { ...t, _score: score };
   });
   scored.sort((a, b) => b._score - a._score);
-  return scored.slice(0, topN).map(({ _score, ...rest }) => ({
-    ...rest,
+  return scored;
+}
+
+function finalizePublication(rest, queryTokens) {
+  const { _score, _semanticSim, ...pub } = rest;
+  return {
+    ...pub,
     relevanceScore: Number(_score.toFixed(3)),
-    supportingSnippet: snippetFromAbstract(`${rest.title}. ${rest.eligibility}`, queryTokens, 360),
-  }));
+    ...(typeof _semanticSim === "number" ? { semanticSimilarity: _semanticSim } : {}),
+    supportingSnippet: snippetFromAbstract(pub.abstract, queryTokens),
+  };
+}
+
+function finalizeTrial(rest, queryTokens) {
+  const { _score, _semanticSim, ...trial } = rest;
+  return {
+    ...trial,
+    relevanceScore: Number(_score.toFixed(3)),
+    ...(typeof _semanticSim === "number" ? { semanticSimilarity: _semanticSim } : {}),
+    supportingSnippet: snippetFromAbstract(`${trial.title}. ${trial.eligibility}`, queryTokens, 360),
+  };
+}
+
+/**
+ * Merge OpenAlex + PubMed (caller merges arrays), dedupe by title similarity, optional semantic rerank, top N.
+ */
+export async function rankPublications(publications, { queryText, topN = 8, semantic = null } = {}) {
+  const queryTokens = tokenize(queryText);
+  const merged = mergeAndScorePublicationsLexical(publications, queryText);
+  let ordered = merged;
+
+  if (semantic?.enabled && merged.length > 0) {
+    try {
+      const { rerankPublicationsSemantic } = await import("./embeddings.js");
+      const poolSize = Math.min(semantic.poolSize ?? 64, merged.length);
+      const pool = merged.slice(0, poolSize);
+      const reranked = await rerankPublicationsSemantic(pool, queryText, semantic);
+      ordered = [...reranked, ...merged.slice(poolSize)];
+    } catch (e) {
+      console.warn("[curalink] semantic publication rerank failed, lexical only:", e?.message || e);
+      ordered = merged;
+    }
+  }
+
+  return ordered.slice(0, topN).map((row) => finalizePublication(row, queryTokens));
+}
+
+export async function rankTrials(trials, { queryText, topN = 8, semantic = null } = {}) {
+  const queryTokens = tokenize(queryText);
+  const merged = mergeAndScoreTrialsLexical(trials, queryText);
+  let ordered = merged;
+
+  if (semantic?.enabled && merged.length > 0) {
+    try {
+      const { rerankTrialsSemantic } = await import("./embeddings.js");
+      const poolSize = Math.min(semantic.poolSize ?? 64, merged.length);
+      const pool = merged.slice(0, poolSize);
+      const reranked = await rerankTrialsSemantic(pool, queryText, semantic);
+      ordered = [...reranked, ...merged.slice(poolSize)];
+    } catch (e) {
+      console.warn("[curalink] semantic trial rerank failed, lexical only:", e?.message || e);
+      ordered = merged;
+    }
+  }
+
+  return ordered.slice(0, topN).map((row) => finalizeTrial(row, queryTokens));
 }
